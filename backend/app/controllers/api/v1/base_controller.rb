@@ -6,7 +6,7 @@ module Api
       rescue_from StandardError, with: :render_internal_error
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
       rescue_from ActiveRecord::RecordInvalid, with: :render_unprocessable
-      rescue_from Openclaw::GatewayError, with: :render_gateway_error
+      rescue_from ::Openclaw::GatewayError, with: :render_gateway_error
 
       private
 
@@ -32,7 +32,7 @@ module Api
       end
 
       def gateway
-        @gateway ||= Openclaw::GatewayClient.new
+        @gateway ||= ::Openclaw::GatewayClient.new
       end
     end
   end
