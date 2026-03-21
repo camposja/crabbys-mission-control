@@ -44,6 +44,9 @@ Rails.application.routes.draw do
       # Dashboard stats snapshot
       get "stats",   to: "stats#index"
 
+      # Full board snapshot — pollable by OpenClaw heartbeat
+      get "board",   to: "board#index"
+
       # Gateway health
       get "gateway", to: "gateway#show"
 

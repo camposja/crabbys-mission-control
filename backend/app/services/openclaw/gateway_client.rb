@@ -38,5 +38,4 @@ module Openclaw
     end
   end
 
-  class GatewayError < StandardError; end
 end
