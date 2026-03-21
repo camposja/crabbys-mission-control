@@ -48,11 +48,13 @@ Rails.application.routes.draw do
         end
       end
 
-      # Workspace documents
+      # Workspace documents (with upload + search)
       resources :documents, only: [:index] do
         collection do
           get  :content
-          patch :content, action: :update_content
+          patch :content,  action: :update_content
+          get  :search
+          post :upload
         end
       end
 
@@ -66,7 +68,19 @@ Rails.application.routes.draw do
       end
 
       # Usage / cost tracking
-      get "usage", to: "usage#index"
+      scope "usage" do
+        get  "/",           to: "usage#index",             as: :usage
+        get  "timeline",    to: "usage#timeline",          as: :usage_timeline
+        get  "thresholds",  to: "usage#thresholds",        as: :usage_thresholds
+        patch "thresholds", to: "usage#update_thresholds", as: :update_usage_thresholds
+        post "ingest",      to: "usage#ingest",            as: :usage_ingest
+      end
+
+      # Diagnostics / health
+      scope "diagnostics" do
+        get  "/",               to: "diagnostics#index",           as: :diagnostics
+        post "restart_gateway", to: "diagnostics#restart_gateway", as: :restart_gateway
+      end
 
       # Mission statement
       resource :mission_statement, only: [:show, :update] do
@@ -81,6 +95,26 @@ Rails.application.routes.draw do
 
       # Full board snapshot — pollable by OpenClaw heartbeat
       get "board",   to: "board#index"
+
+      # Terminal sessions metadata (actual I/O is via TerminalChannel)
+      scope "terminal" do
+        get  "sessions",        to: "terminal#sessions"
+        delete "sessions/:session_id", to: "terminal#destroy", as: :terminal_session
+      end
+
+      # Security audit + remote access
+      scope "security" do
+        get "audit",         to: "security#audit"
+        get "remote_access", to: "security#remote_access"
+        get "permissions",   to: "security#permissions"
+      end
+
+      # Feedback / feature requests
+      resources :feedbacks, only: [:index, :show, :create] do
+        member do
+          patch :update_status
+        end
+      end
 
       # Gateway health
       get "gateway", to: "gateway#show"

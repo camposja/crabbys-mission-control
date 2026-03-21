@@ -16,7 +16,7 @@ class EventsChannel < ApplicationCable::Channel
 
   # Client can request a replay of the last N events
   def replay(data)
-    count = [data["count"].to_i, 100].clamp(1, 100)
+    count = data["count"].to_i.clamp(1, 100)
     recent = EventStore.recent(count)
     recent.each { |ev| transmit(ev) }
   end

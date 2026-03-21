@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_21_205845) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_220035) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -48,6 +48,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_205845) do
     t.jsonb "metadata"
     t.string "path"
     t.integer "project_id"
+    t.string "title"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "feedbacks", force: :cascade do |t|
+    t.text "ai_response"
+    t.string "branch_name"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "feedback_type"
+    t.jsonb "metadata"
+    t.string "status"
     t.string "title"
     t.datetime "updated_at", null: false
   end

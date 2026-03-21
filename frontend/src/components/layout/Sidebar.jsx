@@ -2,22 +2,25 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
   Bot, CalendarDays, BarChart2, Settings, Zap,
-  Cpu, FileText, Users,
+  Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const nav = [
-  { to: "/",          icon: LayoutDashboard, label: "Dashboard"  },
-  { to: "/tasks",     icon: ListTodo,        label: "Tasks"       },
-  { to: "/projects",  icon: FolderKanban,    label: "Projects"    },
-  { to: "/agents",    icon: Bot,             label: "Agents"      },
-  { to: "/team",      icon: Users,           label: "Team"        },
-  { to: "/memory",    icon: Brain,           label: "Memory"      },
-  { to: "/docs",      icon: FileText,        label: "Docs"        },
-  { to: "/models",    icon: Cpu,             label: "Models"      },
-  { to: "/calendar",  icon: CalendarDays,    label: "Calendar"    },
-  { to: "/usage",     icon: BarChart2,       label: "Usage"       },
-  { to: "/settings",  icon: Settings,        label: "Settings"    },
+  { to: "/",          icon: LayoutDashboard,  label: "Dashboard"  },
+  { to: "/tasks",     icon: ListTodo,         label: "Tasks"       },
+  { to: "/projects",  icon: FolderKanban,     label: "Projects"    },
+  { to: "/agents",    icon: Bot,              label: "Agents"      },
+  { to: "/team",      icon: Users,            label: "Team"        },
+  { to: "/memory",    icon: Brain,            label: "Memory"      },
+  { to: "/docs",      icon: FileText,         label: "Docs"        },
+  { to: "/models",    icon: Cpu,              label: "Models"      },
+  { to: "/terminal",  icon: TerminalSquare,   label: "Terminal"    },
+  { to: "/calendar",  icon: CalendarDays,     label: "Calendar"    },
+  { to: "/usage",     icon: BarChart2,        label: "Usage"       },
+  { to: "/security",  icon: Shield,           label: "Security"    },
+  { to: "/feedback",  icon: MessageSquarePlus,label: "Feedback"    },
+  { to: "/settings",  icon: Settings,         label: "Settings"    },
 ];
 
 export default function Sidebar() {
@@ -35,7 +38,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {nav.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}

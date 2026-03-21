@@ -9,6 +9,9 @@ import TeamPage       from "./pages/team/TeamPage";
 import MemoryPage     from "./pages/memory/MemoryPage";
 import DocsPage       from "./pages/docs/DocsPage";
 import ModelsPage     from "./pages/models/ModelsPage";
+import TerminalPage   from "./pages/terminal/TerminalPage";
+import SecurityPage   from "./pages/security/SecurityPage";
+import FeedbackPage   from "./pages/feedback/FeedbackPage";
 import CalendarPage   from "./pages/calendar/CalendarPage";
 import UsagePage      from "./pages/usage/UsagePage";
 import SettingsPage   from "./pages/settings/SettingsPage";
@@ -33,6 +36,9 @@ export default function App() {
             <Route path="memory"     element={<MemoryPage />} />
             <Route path="docs"       element={<DocsPage />} />
             <Route path="models"     element={<ModelsPage />} />
+            <Route path="terminal"   element={<TerminalPage />} />
+            <Route path="security"   element={<SecurityPage />} />
+            <Route path="feedback"   element={<FeedbackPage />} />
             <Route path="calendar"   element={<CalendarPage />} />
             <Route path="usage"      element={<UsagePage />} />
             <Route path="settings"   element={<SettingsPage />} />
