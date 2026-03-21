@@ -40,6 +40,18 @@ Rails.application.routes.draw do
 
       # Settings
       resource :settings, only: [:show, :update]
+
+      # Dashboard stats snapshot
+      get "stats",   to: "stats#index"
+
+      # Gateway health
+      get "gateway", to: "gateway#show"
+
+      # Upcoming calendar events (dashboard widget)
+      get "calendar/upcoming", to: "calendar_upcoming#index"
+
+      # Live event feed replay
+      get "events/recent", to: "events#recent"
     end
   end
 
