@@ -1,103 +1,127 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Zap, AlertCircle, CheckCircle, Clock } from "lucide-react";
-import client from "../../api/client";
+import { CalendarDays } from "lucide-react";
+import { dashboardApi } from "../../api/dashboard";
 import { useChannel } from "../../hooks/useChannel";
-import { cn } from "../../lib/utils";
+import ErrorBoundary from "../../components/ui/ErrorBoundary";
+import MissionStatement from "../../components/dashboard/MissionStatement";
+import StatsGrid from "../../components/dashboard/StatsGrid";
+import GatewayHealth from "../../components/dashboard/GatewayHealth";
+import EventFeed from "../../components/dashboard/EventFeed";
 
 export default function DashboardPage() {
-  const [events, setEvents] = useState([]);
+  const [metrics, setMetrics] = useState(null);
 
-  const { data: health, isLoading } = useQuery({
-    queryKey: ["health"],
-    queryFn: () => client.get("/health").then(r => r.data),
+  const { data: stats } = useQuery({
+    queryKey:        ["stats"],
+    queryFn:         dashboardApi.getStats,
     refetchInterval: 15_000,
-  });
-
-  const { data: tasks } = useQuery({
-    queryKey: ["tasks-summary"],
-    queryFn: () => client.get("/tasks").then(r => r.data),
-    refetchInterval: 30_000,
   });
 
   const { data: mission } = useQuery({
     queryKey: ["mission-statement"],
-    queryFn: () => client.get("/mission_statement").then(r => r.data),
+    queryFn:  dashboardApi.getMissionStatement,
   });
 
-  // Live agent event feed via Action Cable
-  useChannel("AgentEventsChannel", (data) => {
-    setEvents(prev => [{ ...data, id: Date.now() }, ...prev].slice(0, 50));
+  const { data: upcoming = [] } = useQuery({
+    queryKey:        ["calendar-upcoming"],
+    queryFn:         () => dashboardApi.getUpcoming(5),
+    refetchInterval: 60_000,
   });
 
-  const taskCounts = {
-    backlog:     tasks?.backlog?.length     ?? 0,
-    in_progress: tasks?.in_progress?.length ?? 0,
-    review:      tasks?.review?.length      ?? 0,
-    done:        tasks?.done?.length        ?? 0,
-  };
+  // Pull system metrics from Action Cable
+  useChannel("SystemMetricsChannel", (data) => {
+    if (data.type === "metrics" || data.cpu !== undefined) {
+      setMetrics(data);
+    }
+  });
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Mission Statement */}
-      {mission?.content && (
-        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg px-5 py-4">
-          <p className="text-xs text-orange-400 uppercase tracking-widest mb-1 font-medium">North Star</p>
-          <p className="text-white text-sm leading-relaxed">{mission.content}</p>
-        </div>
-      )}
+    <div className="p-6 space-y-5">
 
-      {/* Status grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatusCard
-          label="OpenClaw"
-          value={isLoading ? "…" : health?.openclaw_gateway}
-          ok={health?.openclaw_gateway === "connected"}
-        />
-        <StatusCard label="Backlog"     value={taskCounts.backlog}     ok />
-        <StatusCard label="In Progress" value={taskCounts.in_progress} ok />
-        <StatusCard label="Done"        value={taskCounts.done}        ok />
-      </div>
+      {/* Mission Statement — editable */}
+      <ErrorBoundary name="Mission Statement">
+        <MissionStatement content={mission?.content} />
+      </ErrorBoundary>
 
-      {/* Live event feed */}
-      <div className="bg-gray-900 border border-gray-800 rounded-lg">
-        <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <h2 className="text-sm font-semibold text-white">Live Event Feed</h2>
+      {/* Gateway health bar */}
+      <ErrorBoundary name="Gateway Health">
+        <GatewayHealth />
+      </ErrorBoundary>
+
+      {/* Stats grid */}
+      <ErrorBoundary name="Stats">
+        <StatsGrid stats={stats} metrics={metrics} />
+      </ErrorBoundary>
+
+      {/* Main content: feed + sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Event feed — takes 2/3 width */}
+        <div className="lg:col-span-2">
+          <ErrorBoundary name="Event Feed">
+            <EventFeed />
+          </ErrorBoundary>
         </div>
-        <div className="divide-y divide-gray-800 max-h-72 overflow-y-auto">
-          {events.length === 0 ? (
-            <p className="px-4 py-6 text-center text-gray-500 text-sm">
-              Waiting for agent activity…
-            </p>
-          ) : (
-            events.map(ev => (
-              <div key={ev.id} className="px-4 py-2.5 flex items-start gap-3">
-                <Zap size={12} className="text-orange-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-xs text-white">{ev.event || ev.type}</p>
-                  {ev.message && <p className="text-xs text-gray-500 mt-0.5">{ev.message}</p>}
-                </div>
-                <span className="ml-auto text-xs text-gray-600 shrink-0">
-                  {new Date(ev.id).toLocaleTimeString()}
-                </span>
+
+        {/* Right sidebar */}
+        <div className="space-y-4">
+
+          {/* Upcoming events */}
+          <ErrorBoundary name="Upcoming Events">
+            <div className="bg-gray-900 border border-gray-800 rounded-lg">
+              <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+                <CalendarDays size={13} className="text-purple-400" />
+                <h2 className="text-sm font-semibold text-white">Upcoming</h2>
               </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+              <div className="divide-y divide-gray-800">
+                {upcoming.length === 0 ? (
+                  <p className="px-4 py-4 text-xs text-gray-600 text-center">No upcoming events</p>
+                ) : (
+                  upcoming.map(ev => (
+                    <div key={ev.id} className="px-4 py-2.5">
+                      <p className="text-sm text-white">{ev.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(ev.starts_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </ErrorBoundary>
 
-function StatusCard({ label, value, ok }) {
-  const Icon = ok ? CheckCircle : AlertCircle;
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">{label}</p>
-      <div className="flex items-center gap-2">
-        <Icon size={14} className={cn(ok ? "text-green-400" : "text-red-400")} />
-        <p className="text-lg font-semibold text-white">{value ?? "—"}</p>
+          {/* Task summary */}
+          <ErrorBoundary name="Task Summary">
+            <div className="bg-gray-900 border border-gray-800 rounded-lg">
+              <div className="px-4 py-3 border-b border-gray-800">
+                <h2 className="text-sm font-semibold text-white">Task Summary</h2>
+              </div>
+              <div className="p-4 space-y-2">
+                {[
+                  { label: "Backlog",     count: stats?.tasks?.backlog,     color: "bg-gray-500"   },
+                  { label: "In Progress", count: stats?.tasks?.in_progress, color: "bg-blue-500"   },
+                  { label: "Review",      count: stats?.tasks?.review,      color: "bg-yellow-500" },
+                  { label: "Done",        count: stats?.tasks?.done,        color: "bg-green-500"  },
+                ].map(({ label, count, color }) => {
+                  const total = stats?.tasks?.total || 1;
+                  const pct   = Math.round(((count || 0) / total) * 100);
+                  return (
+                    <div key={label}>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-gray-400">{label}</span>
+                        <span className="text-white">{count ?? 0}</span>
+                      </div>
+                      <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </ErrorBoundary>
+        </div>
       </div>
     </div>
   );

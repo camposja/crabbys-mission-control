@@ -1,15 +1,25 @@
-# examples:
-#   periodic_cleanup:
-#     class: CleanSoftDeletedRecordsJob
-#     queue: background
-#     args: [ 1000, { batch_size: 500 } ]
-#     schedule: every hour
-#   periodic_cleanup_with_command:
-#     command: "SoftDeletedRecord.due.delete_all"
-#     priority: 2
-#     schedule: at 5am every day
+development:
+  poll_openclaw_events:
+    class: OpenclawEventPollerJob
+    queue: default
+    schedule: every 5 seconds
+
+  system_metrics:
+    class: SystemMetricsJob
+    queue: default
+    schedule: every 30 seconds
 
 production:
+  poll_openclaw_events:
+    class: OpenclawEventPollerJob
+    queue: default
+    schedule: every 5 seconds
+
+  system_metrics:
+    class: SystemMetricsJob
+    queue: default
+    schedule: every 30 seconds
+
   clear_solid_queue_finished_jobs:
     command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
     schedule: every hour at minute 12
