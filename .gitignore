@@ -1,0 +1,16 @@
+# Backend
+backend/.env
+backend/config/master.key
+backend/config/credentials.yml.enc
+backend/log/
+backend/tmp/
+backend/storage/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# General
+.DS_Store
+*.log

@@ -1,0 +1,2 @@
+rails: cd backend && bundle exec rails server -p 3000
+react: cd frontend && npm run dev
