@@ -9,6 +9,11 @@ development:
     queue: default
     schedule: every 30 seconds
 
+  heartbeat_check:
+    class: HeartbeatCheckJob
+    queue: default
+    schedule: every 5 minutes
+
 production:
   poll_openclaw_events:
     class: OpenclawEventPollerJob

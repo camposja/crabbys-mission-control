@@ -25,6 +25,15 @@ module Api
           agent_id: task.assignee,
           metadata: { task_id: task.id, status: task.status, priority: task.priority }
         )
+        # Auto-create a calendar event when the task has a deadline
+        if task.due_date.present?
+          CalendarEvent.create!(
+            title:      "Due: #{task.title}",
+            starts_at:  task.due_date,
+            event_type: "task_deadline",
+            metadata:   { task_id: task.id }
+          )
+        end
         render json: task, status: :created
       end
 

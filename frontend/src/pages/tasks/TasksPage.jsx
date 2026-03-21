@@ -1,15 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
-import { Plus, GripVertical, X } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { Plus, X, Bot, Circle, RefreshCw } from "lucide-react";
 import { tasksApi } from "../../api/tasks";
 import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
+import PlanningModal from "../../components/tasks/PlanningModal";
+import client from "../../api/client";
 
 const COLUMNS = [
-  { id: "backlog",     label: "Backlog",     color: "text-gray-400"   },
-  { id: "in_progress", label: "In Progress", color: "text-blue-400"   },
-  { id: "review",      label: "Review",      color: "text-yellow-400" },
-  { id: "done",        label: "Done",        color: "text-green-400"  },
+  { id: "backlog",     label: "Backlog",     color: "text-gray-400",   dot: "bg-gray-500"   },
+  { id: "in_progress", label: "In Progress", color: "text-blue-400",   dot: "bg-blue-500"   },
+  { id: "review",      label: "Review",      color: "text-yellow-400", dot: "bg-yellow-500" },
+  { id: "done",        label: "Done",        color: "text-green-400",  dot: "bg-green-500"  },
 ];
 
 const PRIORITY_COLORS = {
@@ -19,7 +22,14 @@ const PRIORITY_COLORS = {
   low:    "bg-gray-500/20 text-gray-400 border-gray-500/30",
 };
 
-// Known assignees — avatar letter + full name for tooltip
+const AGENT_STATUS_COLORS = {
+  spawned:       "text-blue-400",
+  running:       "text-green-400",
+  done:          "text-green-500",
+  spawn_failed:  "text-red-400",
+  idle:          "text-gray-500",
+};
+
 const ASSIGNEES = [
   { id: "jose",   label: "Jose",   letter: "J", color: "bg-blue-600"   },
   { id: "crabby", label: "Crabby", letter: "C", color: "bg-orange-500" },
@@ -27,21 +37,24 @@ const ASSIGNEES = [
 
 function getAssignee(id) {
   return ASSIGNEES.find(a => a.id === id?.toLowerCase()) || {
-    id,
-    label: id,
-    letter: id?.[0]?.toUpperCase() || "?",
-    color: "bg-gray-600",
+    id, label: id, letter: id?.[0]?.toUpperCase() || "?", color: "bg-gray-600",
   };
 }
 
 export default function TasksPage() {
   const qc = useQueryClient();
-  const [adding, setAdding] = useState(null);
-  const [error,  setError]  = useState(null);
+  const [adding,       setAdding]       = useState(null);
+  const [error,        setError]        = useState(null);
+  const [planningTask, setPlanningTask] = useState(null); // task awaiting planning modal
 
   const { data: tasksByStatus = {}, isLoading } = useQuery({
     queryKey: ["tasks"],
-    queryFn:  () => tasksApi.getAll(),
+    queryFn:  tasksApi.getAll,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects-list"],
+    queryFn:  () => client.get("/projects").then(r => r.data),
   });
 
   useChannel("TaskUpdatesChannel", () => {
@@ -50,101 +63,166 @@ export default function TasksPage() {
 
   const createMutation = useMutation({
     mutationFn: tasksApi.create,
-    onSuccess: () => {
+    onSuccess: (task) => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       setAdding(null);
       setError(null);
+      // Open planning modal automatically when assigned to crabby
+      if (task.assignee === "crabby") {
+        setPlanningTask(task);
+      }
     },
     onError: (err) => {
-      const msg = err?.response?.data?.error || err.message || "Failed to create task";
-      setError(msg);
+      setError(err?.response?.data?.error || err.message || "Failed to create task");
     },
   });
 
   const moveMutation = useMutation({
-    mutationFn: ({ id, status }) => tasksApi.move(id, status),
+    mutationFn: ({ id, column }) => tasksApi.move(id, column),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
     onError: (err) => {
-      const msg = err?.response?.data?.error || err.message || "Failed to move card";
-      setError(msg);
+      setError(err?.response?.data?.error || err.message || "Failed to move card");
+      qc.invalidateQueries({ queryKey: ["tasks"] }); // revert optimistic UI
     },
   });
 
-  const handleDrop = (e, targetStatus) => {
-    const id = e.dataTransfer.getData("taskId");
-    if (id) moveMutation.mutate({ id, status: targetStatus });
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const { draggableId, destination } = result;
+    const newColumn = destination.droppableId;
+    const task = Object.values(tasksByStatus).flat().find(t => String(t.id) === draggableId);
+    if (task && task.status !== newColumn) {
+      moveMutation.mutate({ id: task.id, column: newColumn });
+    }
   };
 
   if (isLoading) return <div className="p-6 text-gray-400 text-sm">Loading tasks…</div>;
 
+  const allTasks = Object.values(tasksByStatus).flat();
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Tasks</h1>
-        <p className="text-gray-400 text-sm mt-0.5">Drag cards between columns to move them</p>
+    <div className="p-6 h-screen flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Tasks</h1>
+          <p className="text-gray-400 text-sm mt-0.5">
+            {allTasks.length} task{allTasks.length !== 1 ? "s" : ""} · drag cards between columns
+          </p>
+        </div>
+        {moveMutation.isPending && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <RefreshCw size={11} className="animate-spin" /> Moving…
+          </div>
+        )}
       </div>
 
+      {/* Error banner */}
       {error && (
-        <div className="mb-4 flex items-center gap-2 bg-red-950/50 border border-red-800 rounded-lg px-4 py-2.5">
+        <div className="mb-4 shrink-0 flex items-center gap-2 bg-red-950/50 border border-red-800 rounded-lg px-4 py-2.5">
           <p className="text-sm text-red-400 flex-1">{error}</p>
           <button onClick={() => setError(null)}><X size={13} className="text-red-500" /></button>
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4 h-[calc(100vh-170px)]">
-        {COLUMNS.map(col => {
-          const cards = tasksByStatus[col.id] || [];
-          return (
-            <div
-              key={col.id}
-              className="bg-gray-900 border border-gray-800 rounded-lg flex flex-col"
-              onDragOver={e => e.preventDefault()}
-              onDrop={e => handleDrop(e, col.id)}
-            >
-              <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className={cn("text-sm font-semibold", col.color)}>{col.label}</span>
-                  <span className="text-xs bg-gray-800 text-gray-400 rounded-full px-2 py-0.5">
-                    {cards.length}
-                  </span>
-                </div>
-                <button
-                  onClick={() => { setAdding(col.id); setError(null); }}
-                  className="text-gray-600 hover:text-orange-400 transition-colors"
-                  title="Add card"
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
+      {/* Kanban board */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="grid grid-cols-4 gap-4 flex-1 min-h-0">
+          {COLUMNS.map(col => {
+            const cards = tasksByStatus[col.id] || [];
+            return (
+              <div key={col.id} className="bg-gray-900 border border-gray-800 rounded-lg flex flex-col min-h-0">
 
-              <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {adding === col.id && (
-                  <AddCardForm
-                    status={col.id}
-                    onSave={(data) => createMutation.mutate({ ...data, status: col.id })}
-                    onCancel={() => { setAdding(null); setError(null); }}
-                    saving={createMutation.isPending}
-                  />
-                )}
-                {cards.map(task => (
-                  <TaskCard key={task.id} task={task} />
-                ))}
+                {/* Column header */}
+                <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("w-2 h-2 rounded-full shrink-0", col.dot)} />
+                    <span className={cn("text-sm font-semibold", col.color)}>{col.label}</span>
+                    <span className="text-xs bg-gray-800 text-gray-400 rounded-full px-2 py-0.5">
+                      {cards.length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => { setAdding(col.id); setError(null); }}
+                    className="text-gray-600 hover:text-orange-400 transition-colors"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                {/* Droppable area */}
+                <Droppable droppableId={col.id}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        "flex-1 overflow-y-auto p-2 space-y-2 transition-colors",
+                        snapshot.isDraggingOver && "bg-gray-800/40"
+                      )}
+                    >
+                      {adding === col.id && (
+                        <AddCardForm
+                          status={col.id}
+                          projects={projects}
+                          onSave={(data) => createMutation.mutate({ ...data, status: col.id })}
+                          onCancel={() => { setAdding(null); setError(null); }}
+                          saving={createMutation.isPending}
+                        />
+                      )}
+
+                      {cards.map((task, index) => (
+                        <Draggable key={String(task.id)} draggableId={String(task.id)} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <TaskCard
+                                task={task}
+                                isDragging={snapshot.isDragging}
+                                onPlan={() => setPlanningTask(task)}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      </DragDropContext>
+
+      {/* Planning modal */}
+      {planningTask && (
+        <PlanningModal
+          task={planningTask}
+          onApproved={() => {
+            setPlanningTask(null);
+            qc.invalidateQueries({ queryKey: ["tasks"] });
+          }}
+          onSkip={() => setPlanningTask(null)}
+          onClose={() => setPlanningTask(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ── Add card form ─────────────────────────────────────────────────────────────
 
-function AddCardForm({ onSave, onCancel, saving }) {
+function AddCardForm({ onSave, onCancel, saving, projects }) {
   const [title,       setTitle]       = useState("");
   const [description, setDescription] = useState("");
   const [assignee,    setAssignee]    = useState("");
   const [priority,    setPriority]    = useState("medium");
+  const [projectId,   setProjectId]   = useState("");
+  const [dueDate,     setDueDate]     = useState("");
   const titleRef = useRef(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
@@ -152,15 +230,18 @@ function AddCardForm({ onSave, onCancel, saving }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim() || null, assignee: assignee || null, priority });
+    onSave({
+      title:      title.trim(),
+      description: description.trim() || null,
+      assignee:   assignee || null,
+      priority,
+      project_id: projectId || null,
+      due_date:   dueDate || null,
+    });
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-gray-800 border border-orange-500/50 rounded-md p-3 space-y-2.5"
-    >
-      {/* Title — required */}
+    <form onSubmit={handleSubmit} className="bg-gray-800 border border-orange-500/50 rounded-md p-3 space-y-2">
       <input
         ref={titleRef}
         value={title}
@@ -169,8 +250,6 @@ function AddCardForm({ onSave, onCancel, saving }) {
         required
         className="w-full bg-gray-900 text-white text-sm rounded px-2.5 py-1.5 outline-none placeholder-gray-600 border border-gray-700 focus:border-orange-500/50"
       />
-
-      {/* Description — optional */}
       <textarea
         value={description}
         onChange={e => setDescription(e.target.value)}
@@ -178,46 +257,36 @@ function AddCardForm({ onSave, onCancel, saving }) {
         rows={2}
         className="w-full bg-gray-900 text-white text-xs rounded px-2.5 py-1.5 outline-none placeholder-gray-600 border border-gray-700 focus:border-orange-500/50 resize-none"
       />
-
-      {/* Assignee + Priority row */}
       <div className="flex gap-2">
-        <select
-          value={assignee}
-          onChange={e => setAssignee(e.target.value)}
-          className="flex-1 bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none"
-        >
+        <select value={assignee} onChange={e => setAssignee(e.target.value)}
+          className="flex-1 bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none">
           <option value="">Unassigned</option>
-          {ASSIGNEES.map(a => (
-            <option key={a.id} value={a.id}>{a.label}</option>
-          ))}
+          {ASSIGNEES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
         </select>
-
-        <select
-          value={priority}
-          onChange={e => setPriority(e.target.value)}
-          className="flex-1 bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none"
-        >
+        <select value={priority} onChange={e => setPriority(e.target.value)}
+          className="flex-1 bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none">
           <option value="low">Low</option>
           <option value="medium">Medium</option>
           <option value="high">High</option>
           <option value="urgent">Urgent</option>
         </select>
       </div>
-
-      {/* Actions */}
+      {projects.length > 0 && (
+        <select value={projectId} onChange={e => setProjectId(e.target.value)}
+          className="w-full bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none">
+          <option value="">No project</option>
+          {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      )}
+      <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
+        className="w-full bg-gray-900 text-white text-xs rounded px-2.5 py-1.5 border border-gray-700 outline-none"
+      />
       <div className="flex items-center gap-2 pt-0.5">
-        <button
-          type="submit"
-          disabled={!title.trim() || saving}
-          className="text-xs bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white px-3 py-1.5 rounded transition-colors"
-        >
+        <button type="submit" disabled={!title.trim() || saving}
+          className="text-xs bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white px-3 py-1.5 rounded transition-colors">
           {saving ? "Adding…" : "Add card"}
         </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-xs text-gray-500 hover:text-white transition-colors"
-        >
+        <button type="button" onClick={onCancel} className="text-xs text-gray-500 hover:text-white transition-colors">
           Cancel
         </button>
       </div>
@@ -227,65 +296,76 @@ function AddCardForm({ onSave, onCancel, saving }) {
 
 // ── Task card ─────────────────────────────────────────────────────────────────
 
-function TaskCard({ task }) {
+function TaskCard({ task, isDragging, onPlan }) {
   const assignee = task.assignee ? getAssignee(task.assignee) : null;
+  const agentStatusColor = AGENT_STATUS_COLORS[task.agent_status] || "text-gray-600";
+  const hasAgent = task.openclaw_agent_id;
 
   return (
-    <div
-      draggable
-      onDragStart={e => e.dataTransfer.setData("taskId", task.id)}
-      className="bg-gray-800 border border-gray-700 rounded-md p-3 cursor-grab active:cursor-grabbing hover:border-gray-600 transition-colors group"
-    >
-      <div className="flex items-start gap-2">
-        <GripVertical
-          size={12}
-          className="text-gray-600 mt-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        />
+    <div className={cn(
+      "bg-gray-800 border rounded-md p-3 transition-all",
+      isDragging
+        ? "border-orange-500/50 shadow-lg shadow-orange-500/10 rotate-1 scale-[1.02]"
+        : "border-gray-700 hover:border-gray-600"
+    )}>
+      {/* Title */}
+      <p className="text-sm text-white leading-snug">{task.title}</p>
 
-        <div className="flex-1 min-w-0">
-          {/* Title */}
-          <p className="text-sm text-white leading-snug">{task.title}</p>
+      {/* Description */}
+      {task.description && (
+        <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+          {task.description}
+        </p>
+      )}
 
-          {/* Description */}
-          {task.description && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-              {task.description}
-            </p>
+      {/* Agent status badge */}
+      {hasAgent && (
+        <div className={cn("flex items-center gap-1 mt-2", agentStatusColor)}>
+          <Bot size={10} />
+          <span className="text-xs">{task.agent_status || "agent active"}</span>
+          {task.openclaw_agent_id && (
+            <span className="text-xs text-gray-700 font-mono ml-1 truncate max-w-[80px]">
+              {task.openclaw_agent_id}
+            </span>
           )}
-
-          {/* Footer row: priority + due date + assignee avatar */}
-          <div className="flex items-center gap-2 mt-2.5">
-            {task.priority && task.priority !== "medium" && (
-              <span className={cn("text-xs border rounded px-1.5 py-0.5", PRIORITY_COLORS[task.priority])}>
-                {task.priority}
-              </span>
-            )}
-
-            {task.due_date && (
-              <span className="text-xs text-gray-600">
-                {new Date(task.due_date).toLocaleDateString()}
-              </span>
-            )}
-
-            {/* Assignee avatar — right-aligned, tooltip on hover */}
-            {assignee && (
-              <div className="ml-auto relative group/avatar">
-                <div className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center text-white font-bold cursor-default",
-                  assignee.color
-                )}
-                  style={{ fontSize: "9px" }}
-                >
-                  {assignee.letter}
-                </div>
-                {/* Tooltip */}
-                <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
-                  {assignee.label}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
+      )}
+
+      {/* Plan button for unplanned crabby tasks */}
+      {task.assignee === "crabby" && !task.plan_approved_at && !hasAgent && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onPlan(); }}
+          className="mt-2 text-xs text-orange-400/70 hover:text-orange-400 transition-colors"
+        >
+          + Open planning mode
+        </button>
+      )}
+
+      {/* Footer: priority + project + due date + assignee */}
+      <div className="flex items-center gap-2 mt-2.5">
+        {task.priority && task.priority !== "medium" && (
+          <span className={cn("text-xs border rounded px-1.5 py-0.5", PRIORITY_COLORS[task.priority])}>
+            {task.priority}
+          </span>
+        )}
+        {task.due_date && (
+          <span className="text-xs text-gray-600">
+            {new Date(task.due_date).toLocaleDateString()}
+          </span>
+        )}
+        {assignee && (
+          <div className="ml-auto relative group/avatar">
+            <div className={cn(
+              "w-5 h-5 rounded-full flex items-center justify-center text-white font-bold cursor-default",
+              assignee.color
+            )} style={{ fontSize: "9px" }}>
+              {assignee.letter}
+            </div>
+            <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
+              {assignee.label}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
