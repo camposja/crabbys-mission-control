@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { documentsApi } from "../../api/documents";
-import { FileText, FolderOpen, Check, X, Edit3, Database } from "lucide-react";
+import { FileText, FolderOpen, Check, X, Edit3, Database, Search, Upload, AlertTriangle } from "lucide-react";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 
 function DocViewer({ doc, onClose }) {
@@ -131,14 +131,62 @@ function WorkspaceDocList({ docs, selected, onSelect }) {
   );
 }
 
+function UploadButton({ onUploaded }) {
+  const inputRef = useRef(null);
+  const qc = useQueryClient();
+  const upload = useMutation({
+    mutationFn: (file) => documentsApi.upload(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["documents"] });
+      onUploaded?.();
+    },
+  });
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".md,.txt,.json,.yaml,.yml,.csv,.rst"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) upload.mutate(file);
+          e.target.value = "";
+        }}
+      />
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={upload.isPending}
+        className="flex items-center gap-1.5 text-xs bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 px-3 py-1.5 rounded-lg transition-colors"
+      >
+        <Upload size={12} /> {upload.isPending ? "Uploading…" : "Upload"}
+      </button>
+      {upload.isError && (
+        <div className="flex items-center gap-1 text-xs text-red-400 mt-1">
+          <AlertTriangle size={11} /> {upload.error?.response?.data?.error || upload.error?.message}
+        </div>
+      )}
+    </>
+  );
+}
+
 function DocsInner() {
-  const [selected, setSelected] = useState(null);
-  const [activeTab, setActiveTab] = useState("workspace");
+  const [selected,   setSelected]   = useState(null);
+  const [activeTab,  setActiveTab]  = useState("workspace");
+  const [searchQ,    setSearchQ]    = useState("");
+  const [searchSubmit, setSearchSubmit] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["documents"],
     queryFn:  documentsApi.getAll,
     staleTime: 30_000,
+  });
+
+  const { data: searchResults, isLoading: searching } = useQuery({
+    queryKey: ["docs-search", searchSubmit],
+    queryFn:  () => documentsApi.search(searchSubmit),
+    enabled:  searchSubmit.length > 1,
   });
 
   const workspace = data?.workspace || [];
@@ -149,10 +197,31 @@ function DocsInner() {
       <div className={`flex-1 flex flex-col overflow-hidden transition-all ${selected ? "mr-[560px]" : ""}`}>
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-800 shrink-0">
-          <h1 className="text-2xl font-bold text-white mb-1">Docs</h1>
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-2xl font-bold text-white">Docs</h1>
+            <UploadButton onUploaded={() => setActiveTab("workspace")} />
+          </div>
           <p className="text-gray-400 text-sm">
             {workspace.length} workspace file{workspace.length !== 1 ? "s" : ""} · {database.length} database doc{database.length !== 1 ? "s" : ""}
           </p>
+          {/* Search bar */}
+          <form
+            onSubmit={e => { e.preventDefault(); setSearchSubmit(searchQ.trim()); }}
+            className="flex gap-2 mt-3"
+          >
+            <div className="relative flex-1">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
+              <input
+                value={searchQ}
+                onChange={e => { setSearchQ(e.target.value); if (!e.target.value) setSearchSubmit(""); }}
+                placeholder="Search documents…"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+              />
+            </div>
+            <button type="submit" disabled={!searchQ.trim()} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs px-3 rounded-lg transition-colors">
+              Search
+            </button>
+          </form>
         </div>
 
         {/* Content */}
@@ -176,6 +245,36 @@ function DocsInner() {
               <Database size={13} /> Database ({database.length})
             </button>
           </div>
+
+          {/* Search results */}
+          {searchSubmit && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-400">Results for "<span className="text-white">{searchSubmit}</span>"</p>
+                <button onClick={() => { setSearchSubmit(""); setSearchQ(""); }} className="text-xs text-gray-600 hover:text-white">Clear</button>
+              </div>
+              {searching ? (
+                <p className="text-gray-500 text-sm">Searching…</p>
+              ) : (
+                <>
+                  {searchResults?.files?.map((f, i) => (
+                    <button key={i} onClick={() => setSelected(f)} className="w-full text-left bg-gray-900 border border-gray-800 rounded-lg p-3 mb-2 hover:border-gray-700 transition-colors">
+                      <p className="text-xs text-orange-400 truncate mb-1">{f.path}</p>
+                      <p className="text-xs text-gray-400 font-mono">{f.snippet}</p>
+                    </button>
+                  ))}
+                  {searchResults?.db?.map((d, i) => (
+                    <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-3 mb-2">
+                      <p className="text-sm text-white">{d.title || d.filename}</p>
+                    </div>
+                  ))}
+                  {(searchResults?.files?.length === 0 && searchResults?.db?.length === 0) && (
+                    <p className="text-gray-600 text-sm">No results.</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {isLoading ? (
             <p className="text-gray-500 text-sm">Loading…</p>

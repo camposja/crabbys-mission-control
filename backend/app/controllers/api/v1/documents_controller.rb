@@ -2,7 +2,10 @@ module Api
   module V1
     # Serves workspace documents from ~/.openclaw/workspace/
     # Also includes DB-stored documents
+    # SECURITY: Uploads are restricted to ~/.openclaw/workspace/ — no path traversal.
     class DocumentsController < BaseController
+      ALLOWED_UPLOAD_TYPES = %w[.md .txt .json .yaml .yml .csv .rst].freeze
+      MAX_UPLOAD_BYTES     = 5 * 1024 * 1024  # 5 MB
       # GET /api/v1/documents
       def index
         workspace_docs = ::Openclaw::WorkspaceReader.list_workspace_docs
@@ -34,6 +37,55 @@ module Api
         ::Openclaw::WorkspaceReader.write_file(path, content)
         ::EventStore.emit(type: "document_updated", message: "Document updated: #{File.basename(path)}")
         render json: { path: path, saved: true }
+      rescue => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      # GET /api/v1/documents/search?q=...
+      def search
+        q = params[:q].to_s.strip
+        return render(json: { results: [] }) if q.blank?
+
+        # DB full-text search
+        db_results = Document.where("title ILIKE ? OR content ILIKE ?", "%#{q}%", "%#{q}%")
+                              .limit(20).as_json
+
+        # Workspace file search
+        file_results = []
+        ::Openclaw::WorkspaceReader.list_workspace_docs.each do |file|
+          content = ::Openclaw::WorkspaceReader.read_file(file[:path]) rescue next
+          next unless content.downcase.include?(q.downcase)
+          start   = [content.downcase.index(q.downcase) - 80, 0].max
+          snippet = content[start, 250].gsub(/\s+/, " ").strip
+          file_results << file.merge(snippet: snippet)
+        end
+
+        render json: { db: db_results, files: file_results }
+      end
+
+      # POST /api/v1/documents/upload
+      # Saves a file into ~/.openclaw/workspace/
+      # Only plain text files up to 5MB are accepted.
+      def upload
+        file = params[:file]
+        raise "No file provided" unless file.present?
+
+        ext = File.extname(file.original_filename).downcase
+        raise "File type #{ext} not allowed. Allowed: #{ALLOWED_UPLOAD_TYPES.join(', ')}" unless ALLOWED_UPLOAD_TYPES.include?(ext)
+        raise "File too large (max 5MB)" if file.size > MAX_UPLOAD_BYTES
+
+        # Sanitize filename — strip path components and non-safe chars
+        safe_name = File.basename(file.original_filename).gsub(/[^\w.\-]/, "_")
+        dest_path = File.join(
+          ENV.fetch("OPENCLAW_HOME", File.expand_path("~/.openclaw")),
+          "workspace", safe_name
+        )
+
+        FileUtils.mkdir_p(File.dirname(dest_path))
+        IO.copy_stream(file.tempfile, dest_path)
+
+        ::EventStore.emit(type: "document_uploaded", message: "Document uploaded: #{safe_name}")
+        render json: { path: dest_path, name: safe_name, size: file.size }, status: :created
       rescue => e
         render json: { error: e.message }, status: :unprocessable_entity
       end
