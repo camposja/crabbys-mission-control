@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
   Bot, CalendarDays, BarChart2, Settings, Zap,
+  Cpu, FileText, Users,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -10,7 +11,10 @@ const nav = [
   { to: "/tasks",     icon: ListTodo,        label: "Tasks"       },
   { to: "/projects",  icon: FolderKanban,    label: "Projects"    },
   { to: "/agents",    icon: Bot,             label: "Agents"      },
+  { to: "/team",      icon: Users,           label: "Team"        },
   { to: "/memory",    icon: Brain,           label: "Memory"      },
+  { to: "/docs",      icon: FileText,        label: "Docs"        },
+  { to: "/models",    icon: Cpu,             label: "Models"      },
   { to: "/calendar",  icon: CalendarDays,    label: "Calendar"    },
   { to: "/usage",     icon: BarChart2,       label: "Usage"       },
   { to: "/settings",  icon: Settings,        label: "Settings"    },

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Check, X, Target } from "lucide-react";
+import { Pencil, Check, X, Target, Sparkles } from "lucide-react";
 import { dashboardApi } from "../../api/dashboard";
 
 export default function MissionStatement({ content }) {
@@ -16,20 +16,37 @@ export default function MissionStatement({ content }) {
     },
   });
 
+  const suggest = useMutation({
+    mutationFn: dashboardApi.suggestMissionStatement,
+    onSuccess: (data) => {
+      if (data?.suggestion) {
+        setDraft(data.suggestion);
+        setEditing(true);
+      }
+    },
+  });
+
   // Nothing set yet — show a prompt
   if (!content && !editing) {
     return (
-      <button
-        onClick={() => { setDraft(""); setEditing(true); }}
-        className="w-full text-left bg-gray-900 border border-dashed border-gray-700 rounded-lg px-5 py-4 hover:border-orange-500/50 transition-colors group"
-      >
-        <div className="flex items-center gap-2">
-          <Target size={14} className="text-gray-600 group-hover:text-orange-400 transition-colors" />
+      <div className="bg-gray-900 border border-dashed border-gray-700 rounded-lg px-5 py-4 hover:border-orange-500/50 transition-colors group flex items-center justify-between gap-3">
+        <button
+          onClick={() => { setDraft(""); setEditing(true); }}
+          className="flex items-center gap-2 flex-1 text-left"
+        >
+          <Target size={14} className="text-gray-600 group-hover:text-orange-400 transition-colors shrink-0" />
           <p className="text-sm text-gray-600 group-hover:text-gray-400 transition-colors">
             Set your North Star mission statement…
           </p>
-        </div>
-      </button>
+        </button>
+        <button
+          onClick={() => suggest.mutate()}
+          disabled={suggest.isPending}
+          className="flex items-center gap-1.5 text-xs bg-purple-500/20 hover:bg-purple-500/30 disabled:opacity-50 text-purple-400 px-2.5 py-1 rounded transition-colors shrink-0"
+        >
+          <Sparkles size={11} /> {suggest.isPending ? "Thinking…" : "Suggest"}
+        </button>
+      </div>
     );
   }
 
@@ -48,7 +65,7 @@ export default function MissionStatement({ content }) {
           className="w-full bg-transparent text-white text-sm leading-relaxed resize-none outline-none placeholder-gray-600"
           placeholder="What is your mission? e.g. Build a profitable indie product in 90 days…"
         />
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
           <button
             onClick={() => mutation.mutate(draft)}
             disabled={mutation.isPending || !draft.trim()}
@@ -56,6 +73,14 @@ export default function MissionStatement({ content }) {
           >
             <Check size={11} />
             {mutation.isPending ? "Saving…" : "Save"}
+          </button>
+          <button
+            onClick={() => suggest.mutate()}
+            disabled={suggest.isPending}
+            className="flex items-center gap-1.5 text-xs bg-purple-500/20 hover:bg-purple-500/30 disabled:opacity-50 text-purple-400 px-3 py-1.5 rounded transition-colors"
+          >
+            <Sparkles size={11} />
+            {suggest.isPending ? "Thinking…" : "Suggest"}
           </button>
           <button
             onClick={() => { setEditing(false); setDraft(content || ""); }}

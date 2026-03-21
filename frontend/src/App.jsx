@@ -5,7 +5,10 @@ import DashboardPage  from "./pages/dashboard/DashboardPage";
 import TasksPage      from "./pages/tasks/TasksPage";
 import ProjectsPage   from "./pages/projects/ProjectsPage";
 import AgentsPage     from "./pages/agents/AgentsPage";
+import TeamPage       from "./pages/team/TeamPage";
 import MemoryPage     from "./pages/memory/MemoryPage";
+import DocsPage       from "./pages/docs/DocsPage";
+import ModelsPage     from "./pages/models/ModelsPage";
 import CalendarPage   from "./pages/calendar/CalendarPage";
 import UsagePage      from "./pages/usage/UsagePage";
 import SettingsPage   from "./pages/settings/SettingsPage";
@@ -26,7 +29,10 @@ export default function App() {
             <Route path="tasks"      element={<TasksPage />} />
             <Route path="projects"   element={<ProjectsPage />} />
             <Route path="agents"     element={<AgentsPage />} />
+            <Route path="team"       element={<TeamPage />} />
             <Route path="memory"     element={<MemoryPage />} />
+            <Route path="docs"       element={<DocsPage />} />
+            <Route path="models"     element={<ModelsPage />} />
             <Route path="calendar"   element={<CalendarPage />} />
             <Route path="usage"      element={<UsagePage />} />
             <Route path="settings"   element={<SettingsPage />} />

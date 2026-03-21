@@ -32,15 +32,46 @@ Rails.application.routes.draw do
       resources :calendar_events
       resources :cron_jobs
 
+      # Agents (direct, merged with gateway)
+      resources :agents, only: [:index, :show] do
+        member do
+          post :pause
+          post :resume
+          delete :terminate
+        end
+      end
+
+      # Models
+      resources :models, only: [:index] do
+        collection do
+          get :live
+        end
+      end
+
+      # Workspace documents
+      resources :documents, only: [:index] do
+        collection do
+          get  :content
+          patch :content, action: :update_content
+        end
+      end
+
       # Memory
-      resources :memories, only: [:index, :show, :update, :destroy]
-      get "memories/search", to: "memories#search"
+      resources :memories, only: [:index, :show, :update, :destroy] do
+        collection do
+          get   :search
+          get   :journal
+          patch :journal, action: :update_journal
+        end
+      end
 
       # Usage / cost tracking
       get "usage", to: "usage#index"
 
       # Mission statement
-      resource :mission_statement, only: [:show, :update]
+      resource :mission_statement, only: [:show, :update] do
+        post :suggest, on: :member
+      end
 
       # Settings
       resource :settings, only: [:show, :update]

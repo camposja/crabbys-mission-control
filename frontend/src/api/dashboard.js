@@ -8,4 +8,6 @@ export const dashboardApi = {
   getMissionStatement: ()    => client.get("/mission_statement").then(r => r.data),
   updateMissionStatement: (content) =>
     client.patch("/mission_statement", { mission_statement: { content } }).then(r => r.data),
+  suggestMissionStatement: () =>
+    client.post("/mission_statement/suggest").then(r => r.data),
 };
