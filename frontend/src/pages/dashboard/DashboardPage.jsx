@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, DollarSign, TrendingUp } from "lucide-react";
 import { dashboardApi } from "../../api/dashboard";
+import { usageApi } from "../../api/usage";
 import { useChannel } from "../../hooks/useChannel";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 import MissionStatement from "../../components/dashboard/MissionStatement";
@@ -27,6 +28,13 @@ export default function DashboardPage() {
     queryKey:        ["calendar-upcoming"],
     queryFn:         () => dashboardApi.getUpcoming(5),
     refetchInterval: 60_000,
+  });
+
+  const { data: usageSummary } = useQuery({
+    queryKey:        ["usage-dashboard"],
+    queryFn:         () => usageApi.getAll({ from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString() }),
+    staleTime:       300_000,
+    refetchInterval: 300_000,
   });
 
   // Pull system metrics from Action Cable
@@ -90,6 +98,45 @@ export default function DashboardPage() {
               </div>
             </div>
           </ErrorBoundary>
+
+          {/* Cost projection */}
+          {usageSummary && (
+            <ErrorBoundary name="Cost Projection">
+              <div className="bg-gray-900 border border-gray-800 rounded-lg">
+                <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+                  <DollarSign size={13} className="text-green-400" />
+                  <h2 className="text-sm font-semibold text-white">This Month</h2>
+                </div>
+                <div className="p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Spend so far</span>
+                    <span className="text-sm font-bold text-green-400">${usageSummary.total_cost ?? 0}</span>
+                  </div>
+                  {(() => {
+                    const dayOfMonth = new Date().getDate();
+                    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+                    const projected = daysInMonth > 0 && dayOfMonth > 0
+                      ? ((usageSummary.total_cost ?? 0) / dayOfMonth * daysInMonth).toFixed(2)
+                      : null;
+                    return projected ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <TrendingUp size={10} /> Projected
+                        </span>
+                        <span className="text-xs text-gray-400">${projected}</span>
+                      </div>
+                    ) : null;
+                  })()}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Tokens used</span>
+                    <span className="text-xs text-gray-400">
+                      {((usageSummary.total_input ?? 0) + (usageSummary.total_output ?? 0)).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </ErrorBoundary>
+          )}
 
           {/* Task summary */}
           <ErrorBoundary name="Task Summary">
