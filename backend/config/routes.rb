@@ -16,7 +16,11 @@ Rails.application.routes.draw do
 
       # Tasks / Kanban
       resources :tasks do
-        member { patch :move }
+        member do
+          patch :move
+          post  :plan,         to: "task_plans#create"
+          post  :plan_approve, to: "task_plans#approve"
+        end
       end
 
       # Projects
