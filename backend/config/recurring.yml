@@ -4,6 +4,11 @@ development:
     queue: default
     schedule: every 5 seconds
 
+  agent_status_sync:
+    class: AgentStatusSyncJob
+    queue: default
+    schedule: every 30 seconds
+
   system_metrics:
     class: SystemMetricsJob
     queue: default
@@ -24,6 +29,11 @@ production:
     class: OpenclawEventPollerJob
     queue: default
     schedule: every 5 seconds
+
+  agent_status_sync:
+    class: AgentStatusSyncJob
+    queue: default
+    schedule: every 30 seconds
 
   system_metrics:
     class: SystemMetricsJob

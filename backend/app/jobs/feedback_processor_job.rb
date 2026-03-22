@@ -16,11 +16,11 @@ class FeedbackProcessorJob < ApplicationJob
 
     begin
       client   = Openclaw::GatewayClient.new
-      response = client.post("/api/message", {
-        agent_id:   "main",
+      response = client.chat_send(
         content:    prompt,
+        agent_id:   "main",
         session_id: "feedback-#{feedback.id}"
-      })
+      )
 
       ai_text     = response.dig("message", "content") || response["content"] || ""
       branch_name = extract_branch_name(ai_text, feedback)

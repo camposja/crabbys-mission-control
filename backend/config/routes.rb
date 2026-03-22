@@ -6,13 +6,17 @@ Rails.application.routes.draw do
       # Health
       get "health", to: "health#index"
 
-      # OpenClaw gateway proxy
+      # OpenClaw gateway proxy + inbound webhook
       namespace :openclaw do
         get  "agents",     to: "agents#index"
         get  "agents/:id", to: "agents#show"
         get  "sessions",   to: "sessions#index"
         post "message",    to: "messages#create"
+        post "webhook",    to: "webhook#create"
       end
+
+      # End-to-end integration validation (runs live probes against the gateway)
+      get "integration_check", to: "integration_check#index"
 
       # Tasks / Kanban
       resources :tasks do

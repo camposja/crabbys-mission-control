@@ -75,11 +75,11 @@ module Api
         PROMPT
 
         begin
-          response = gateway.post("/api/message", {
-            agent_id: "main",
-            content:  prompt,
+          response = gateway.chat_send(
+            content:    prompt,
+            agent_id:   "main",
             session_id: "planning-#{@task.id}"
-          })
+          )
           raw = response.dig("message", "content") || response["content"] || ""
           parsed = JSON.parse(raw.match(/\{.*\}/m)&.[](0) || "{}")
           { questions: parsed["questions"] || default_questions, plan: nil }
@@ -104,11 +104,11 @@ module Api
         PROMPT
 
         begin
-          response = gateway.post("/api/message", {
-            agent_id:   "main",
+          response = gateway.chat_send(
             content:    prompt,
+            agent_id:   "main",
             session_id: "planning-#{@task.id}"
-          })
+          )
           plan_text = response.dig("message", "content") || response["content"] || fallback_plan
           { questions: @task.plan_questions, plan: plan_text }
         rescue

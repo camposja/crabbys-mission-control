@@ -3,7 +3,7 @@ module Api
     module Openclaw
       class SessionsController < BaseController
         def index
-          data = gateway.get("/api/sessions")
+          data = gateway.rpc("sessions.list")
           render json: data
         end
       end
