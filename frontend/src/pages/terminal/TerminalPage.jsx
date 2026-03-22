@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon }          from "@xterm/addon-fit";
 import { WebLinksAddon }     from "@xterm/addon-web-links";
@@ -128,7 +128,7 @@ function TerminalInstance({ sessionId, active }) {
           rows: term.rows,
           session_id: sessionId,
         });
-      } catch {}
+      } catch { /* ResizeObserver may fire before terminal is mounted */ }
     });
     if (containerRef.current) observer.observe(containerRef.current);
 

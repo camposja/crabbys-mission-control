@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { securityApi } from "../../api/security";
 import {
   Shield, CheckCircle2, XCircle, AlertTriangle, Info,
@@ -65,8 +65,6 @@ function FindingCard({ finding }) {
 }
 
 function AuditTab() {
-  const qc = useQueryClient();
-
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["security-audit"],
     queryFn:  securityApi.getAudit,

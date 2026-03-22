@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
@@ -124,22 +124,19 @@ function SpikeBanner({ spike, onDismiss }) {
 
 // ── Usage Tab ─────────────────────────────────────────────────────────────────
 function UsageTab() {
-  const qc = useQueryClient();
   const [days, setDays]           = useState(30);
   const [showThresholds, setShow] = useState(false);
   const [spike, setSpike]         = useState(null);
 
-  const fromDate = new Date(Date.now() - days * 86400_000).toISOString().split("T")[0];
-
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ["usage", days],
-    queryFn:  () => usageApi.getAll({ from: fromDate }),
+    queryFn:  () => usageApi.getAll({ from: new Date(Date.now() - days * 86400_000).toISOString().split("T")[0] }),
     staleTime: 60_000,
   });
 
   const { data: timeline, isLoading: loadingTimeline } = useQuery({
     queryKey: ["usage-timeline", days],
-    queryFn:  () => usageApi.getTimeline({ from: fromDate }),
+    queryFn:  () => usageApi.getTimeline({ from: new Date(Date.now() - days * 86400_000).toISOString().split("T")[0] }),
     staleTime: 60_000,
   });
 
@@ -357,6 +354,24 @@ function UsageTab() {
   );
 }
 
+// ── Gauge bar (used by DiagnosticsTab) ────────────────────────────────────────
+function GaugeBar({ label, percent, color }) {
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <span>{label}</span>
+        <span>{percent}%</span>
+      </div>
+      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          style={{ width: `${Math.min(percent, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── Diagnostics Tab ───────────────────────────────────────────────────────────
 function DiagnosticsTab() {
   const qc = useQueryClient();
@@ -382,23 +397,6 @@ function DiagnosticsTab() {
       setLiveMetrics(msg);
     }
   });
-
-  function GaugeBar({ label, percent, color }) {
-    return (
-      <div className="mb-3">
-        <div className="flex justify-between text-xs text-gray-400 mb-1">
-          <span>{label}</span>
-          <span>{percent}%</span>
-        </div>
-        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${color}`}
-            style={{ width: `${Math.min(percent, 100)}%` }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
