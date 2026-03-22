@@ -29,6 +29,9 @@ Rails.application.routes.draw do
 
       # Projects
       resources :projects do
+        member do
+          get :summary
+        end
         resources :tasks, only: [:index]
       end
 
