@@ -7,15 +7,22 @@ module Api
       # Returns both DB memories and workspace journal files
       def index
         db_memories = Memory.recent
-        db_memories = db_memories.by_agent(params[:agent_id]) if params[:agent_id].present?
-        db_memories = db_memories.by_type(params[:type])      if params[:type].present?
+        db_memories = db_memories.by_agent(params[:agent_id])       if params[:agent_id].present?
+        db_memories = db_memories.by_type(params[:type])            if params[:type].present?
+        db_memories = db_memories.where(project_id: params[:project_id]) if params[:project_id].present?
 
-        workspace_journals = ::Openclaw::WorkspaceReader.list_memory_files
-
-        render json: {
-          memories:  db_memories.limit(100).as_json,
-          journals:  workspace_journals
-        }
+        if params[:project_id].present?
+          render json: {
+            memories:  db_memories.limit(100).as_json,
+            journals:  []
+          }
+        else
+          workspace_journals = ::Openclaw::WorkspaceReader.list_memory_files
+          render json: {
+            memories:  db_memories.limit(100).as_json,
+            journals:  workspace_journals
+          }
+        end
       end
 
       # GET /api/v1/memories/:id
@@ -83,7 +90,7 @@ module Api
       end
 
       def memory_params
-        params.require(:memory).permit(:content, :memory_type, :tags, :agent_id, :date, metadata: {})
+        params.require(:memory).permit(:content, :memory_type, :tags, :agent_id, :date, :project_id, metadata: {})
       end
     end
   end
