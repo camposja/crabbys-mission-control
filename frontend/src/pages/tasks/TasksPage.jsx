@@ -3,10 +3,10 @@ import { useState, useRef, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, X, Bot, Circle, RefreshCw } from "lucide-react";
 import { tasksApi } from "../../api/tasks";
+import { projectsApi } from "../../api/projects";
 import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
 import PlanningModal from "../../components/tasks/PlanningModal";
-import client from "../../api/client";
 
 const COLUMNS = [
   { id: "backlog",     label: "Backlog",     color: "text-gray-400",   dot: "bg-gray-500"   },
@@ -43,19 +43,26 @@ function getAssignee(id) {
 
 export default function TasksPage() {
   const qc = useQueryClient();
-  const [adding,       setAdding]       = useState(null);
-  const [error,        setError]        = useState(null);
-  const [planningTask, setPlanningTask] = useState(null); // task awaiting planning modal
+  const [adding,             setAdding]             = useState(null);
+  const [error,              setError]              = useState(null);
+  const [planningTask,       setPlanningTask]       = useState(null); // task awaiting planning modal
+  const [selectedProjectId,  setSelectedProjectId]  = useState(null);
+
+  const taskParams = selectedProjectId ? { project_id: selectedProjectId } : {};
 
   const { data: tasksByStatus = {}, isLoading } = useQuery({
-    queryKey: ["tasks"],
-    queryFn:  tasksApi.getAll,
+    queryKey: ["tasks", { project_id: selectedProjectId }],
+    queryFn:  () => tasksApi.getAll(taskParams),
   });
 
   const { data: projects = [] } = useQuery({
-    queryKey: ["projects-list"],
-    queryFn:  () => client.get("/projects").then(r => r.data),
+    queryKey: ["projects"],
+    queryFn:  projectsApi.getAll,
   });
+
+  // Build a lookup map for project data by id
+  const projectMap = {};
+  projects.forEach(p => { projectMap[p.id] = p; });
 
   useChannel("TaskUpdatesChannel", () => {
     qc.invalidateQueries({ queryKey: ["tasks"] });
@@ -125,6 +132,29 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* Project filter */}
+      {projects.length > 0 && (
+        <div className="flex items-center gap-3 mb-4 px-1 shrink-0">
+          <span className="text-sm text-gray-400">Project:</span>
+          {selectedProjectId && projectMap[selectedProjectId] && (
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: projectMap[selectedProjectId].color || "#6b7280" }}
+            />
+          )}
+          <select
+            value={selectedProjectId || ""}
+            onChange={e => setSelectedProjectId(e.target.value || null)}
+            className="bg-gray-800 border border-gray-700 text-white text-sm rounded px-3 py-1.5 focus:outline-none focus:border-orange-500"
+          >
+            <option value="">All Projects</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Kanban board */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-4 gap-4 flex-1 min-h-0">
@@ -183,6 +213,7 @@ export default function TasksPage() {
                                 task={task}
                                 isDragging={snapshot.isDragging}
                                 onPlan={() => setPlanningTask(task)}
+                                project={task.project_id ? projectMap[task.project_id] : null}
                               />
                             </div>
                           )}
@@ -296,20 +327,29 @@ function AddCardForm({ onSave, onCancel, saving, projects }) {
 
 // ── Task card ─────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, isDragging, onPlan }) {
+function TaskCard({ task, isDragging, onPlan, project }) {
   const assignee = task.assignee ? getAssignee(task.assignee) : null;
   const agentStatusColor = AGENT_STATUS_COLORS[task.agent_status] || "text-gray-600";
   const hasAgent = task.openclaw_agent_id;
 
   return (
     <div className={cn(
-      "bg-gray-800 border rounded-md p-3 transition-all",
+      "bg-gray-800 border rounded-md p-3 transition-all relative",
       isDragging
         ? "border-orange-500/50 shadow-lg shadow-orange-500/10 rotate-1 scale-[1.02]"
         : "border-gray-700 hover:border-gray-600"
     )}>
+      {/* Project color dot */}
+      {project && (
+        <span
+          className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full"
+          style={{ backgroundColor: project.color || "#6b7280" }}
+          title={project.name}
+        />
+      )}
+
       {/* Title */}
-      <p className="text-sm text-white leading-snug">{task.title}</p>
+      <p className="text-sm text-white leading-snug pr-4">{task.title}</p>
 
       {/* Description */}
       {task.description && (
