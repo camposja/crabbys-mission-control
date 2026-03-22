@@ -1,6 +1,8 @@
 class Project < ApplicationRecord
   STATUSES = %w[active paused completed archived].freeze
 
+  has_many :documents, dependent: :nullify
+  has_many :memories, dependent: :nullify
   has_many :tasks, dependent: :nullify
 
   validates :name,   presence: true

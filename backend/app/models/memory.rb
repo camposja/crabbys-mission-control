@@ -1,6 +1,8 @@
 class Memory < ApplicationRecord
   TYPES = %w[daily long_term journal semantic].freeze
 
+  belongs_to :project, optional: true
+
   validates :content,     presence: true
   validates :memory_type, inclusion: { in: TYPES }, allow_nil: true
 
