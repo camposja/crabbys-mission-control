@@ -8,13 +8,21 @@ module Api
       MAX_UPLOAD_BYTES     = 5 * 1024 * 1024  # 5 MB
       # GET /api/v1/documents
       def index
-        workspace_docs = ::Openclaw::WorkspaceReader.list_workspace_docs
-        db_docs        = Document.recent.limit(50).as_json
+        db_docs = Document.recent
+        db_docs = db_docs.where(project_id: params[:project_id]) if params[:project_id].present?
 
-        render json: {
-          workspace: workspace_docs,
-          database:  db_docs
-        }
+        if params[:project_id].present?
+          render json: {
+            workspace: [],
+            database:  db_docs.limit(50).as_json
+          }
+        else
+          workspace_docs = ::Openclaw::WorkspaceReader.list_workspace_docs
+          render json: {
+            workspace: workspace_docs,
+            database:  db_docs.limit(50).as_json
+          }
+        end
       end
 
       # GET /api/v1/documents/content?path=...
