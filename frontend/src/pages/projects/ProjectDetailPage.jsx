@@ -108,11 +108,16 @@ export default function ProjectDetailPage() {
     enabled: !!project,
   });
 
-  // Subscribe to task updates channel to keep task list fresh
-  useChannel("TaskUpdatesChannel", () => {
-    qc.invalidateQueries({ queryKey: ["tasks", { project_id: id }] });
-    qc.invalidateQueries({ queryKey: ["project-summary", id] });
-  });
+  // Subscribe to project-scoped updates channel to keep task list, summary, and activity fresh
+  useChannel(
+    id ? { channel: "ProjectUpdatesChannel", project_id: id } : null,
+    () => {
+      qc.invalidateQueries({ queryKey: ["project-summary", id] });
+      qc.invalidateQueries({ queryKey: ["tasks", { project_id: id }] });
+      qc.invalidateQueries({ queryKey: ["project-activity", id] });
+    },
+    [id]
+  );
 
   if (isLoading) {
     return (

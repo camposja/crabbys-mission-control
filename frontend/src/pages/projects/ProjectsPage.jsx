@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, X, FolderOpen, Loader2 } from "lucide-react";
 import { projectsApi } from "../../api/projects";
+import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
 
 const STATUS_COLORS = {
@@ -25,6 +26,12 @@ export default function ProjectsPage() {
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: projectsApi.getAll,
+  });
+
+  // Subscribe to task updates so project list progress bars refresh automatically
+  useChannel("TaskUpdatesChannel", () => {
+    qc.invalidateQueries({ queryKey: ["projects"] });
+    qc.invalidateQueries({ queryKey: ["project-summary"] });
   });
 
   if (isLoading) {
