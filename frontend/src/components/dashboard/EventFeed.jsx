@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Zap, AlertCircle, Info, CheckCircle, Activity,
@@ -20,13 +20,16 @@ const EVENT_ICONS = {
 };
 
 export default function EventFeed() {
-  const [events,   setEvents]   = useState([]);
-  const [paused,   setPaused]   = useState(false);
-  const [filter,   setFilter]   = useState({ agent: "", type: "" });
+  const [liveEvents, setLiveEvents] = useState([]);
+  const [paused,     setPaused]     = useState(false);
+  const [filter,     setFilter]     = useState({ agent: "", type: "" });
   const [showFilter, setShowFilter] = useState(false);
   const bottomRef  = useRef(null);
   const pausedRef  = useRef(paused);
-  pausedRef.current = paused;
+
+  useEffect(() => {
+    pausedRef.current = paused;
+  });
 
   // Load recent events on mount
   const { data: recent } = useQuery({
@@ -35,16 +38,24 @@ export default function EventFeed() {
     staleTime: Infinity,
   });
 
-  useEffect(() => {
-    if (recent?.length) setEvents(recent);
-  }, [recent]);
+  // Merge live events (prepended) with the initial query snapshot
+  const events = useMemo(() => {
+    const base = recent || [];
+    const all  = [...liveEvents, ...base];
+    const seen = new Set();
+    return all.filter(e => {
+      const key = e.id || `${e.timestamp}-${e.type}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 200);
+  }, [liveEvents, recent]);
 
   // Live stream via Action Cable
-  useChannel("EventsChannel", useCallback((data) => {
+  useChannel("EventsChannel", (data) => {
     if (pausedRef.current) return;
-    // Don't show raw metrics events in feed unless user wants them
-    setEvents(prev => [data, ...prev].slice(0, 200));
-  }, []));
+    setLiveEvents(prev => [data, ...prev].slice(0, 200));
+  });
 
   // Auto-scroll to bottom when new events arrive (and not paused)
   useEffect(() => {

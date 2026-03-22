@@ -5,7 +5,10 @@ import { subscribe } from "../lib/cable";
 // Automatically unsubscribes on component unmount.
 export function useChannel(channelName, onReceived, deps = []) {
   const callbackRef = useRef(onReceived);
-  callbackRef.current = onReceived;
+
+  useEffect(() => {
+    callbackRef.current = onReceived;
+  });
 
   useEffect(() => {
     if (!channelName) return;
