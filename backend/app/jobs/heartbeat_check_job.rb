@@ -12,8 +12,12 @@ class HeartbeatCheckJob < ApplicationJob
     if crabby_tasks.any?
       # Build a compact summary for the heartbeat prompt
       task_list = crabby_tasks.map do |t|
-        "- [#{t.status.upcase}] #{t.title} (priority: #{t.priority || 'medium'})"
+        "- [#{t.status.upcase}] task_id=#{t.id} | #{t.title} (priority: #{t.priority || 'medium'})"
       end.join("\n")
+
+      webhook_url = "#{mc_url}/api/v1/openclaw/webhook"
+      webhook_token = ENV["MISSION_CONTROL_WEBHOOK_TOKEN"]
+      auth_header_line = webhook_token.present? ? "\n        Required header: X-Mission-Control-Token: #{webhook_token}" : ""
 
       message = <<~MSG
         HEARTBEAT CHECK — Mission Control task board update.
@@ -23,8 +27,16 @@ class HeartbeatCheckJob < ApplicationJob
         #{task_list}
 
         Review your backlog and pick up any tasks you can action now.
-        To update a task status, call: PATCH #{mc_url}/api/v1/tasks/:id/move with { column: "in_progress" }
-        To send a completion webhook: POST #{mc_url}/api/v1/openclaw/webhook with { event_type: "agent_completed", agent_id: "<your-id>" }
+
+        Webhook instructions (use task_id as the canonical key):
+        Endpoint: POST #{webhook_url}#{auth_header_line}
+
+        When STARTING a task:  {"event_type": "agent_status", "task_id": "<task_id>", "agent_id": "<your-id>", "status": "started"}
+        When COMPLETING a task: {"event_type": "agent_completed", "task_id": "<task_id>", "agent_id": "<your-id>"}
+        When a task FAILS:      {"event_type": "agent_failed", "task_id": "<task_id>", "agent_id": "<your-id>", "message": "<details>"}
+
+        Other endpoints:
+        To update a task status: PATCH #{mc_url}/api/v1/tasks/:id/move with { column: "in_progress" }
         To view the full board: GET #{mc_url}/api/v1/board
       MSG
 

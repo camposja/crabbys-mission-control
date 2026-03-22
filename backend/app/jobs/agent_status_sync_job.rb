@@ -31,6 +31,17 @@ class AgentStatusSyncJob < ApplicationJob
     tasks = Task.where.not(openclaw_agent_id: nil)
                 .where.not(agent_status: %w[completed failed spawn_failed])
 
+    # Warn about tasks that are in_progress / spawn_requested but have no agent linked yet.
+    # These may have an agent working them that hasn't called back with its ID.
+    orphaned = Task.where(openclaw_agent_id: nil)
+                   .where(agent_status: %w[spawn_requested running in_progress])
+    orphaned.each do |t|
+      Rails.logger.warn(
+        "[AgentStatusSyncJob] Task #{t.id} (\"#{t.title}\") is #{t.agent_status} but has no openclaw_agent_id — " \
+        "waiting for agent to call back via webhook with task_id"
+      )
+    end
+
     return if tasks.none?
 
     client = Openclaw::GatewayClient.new
