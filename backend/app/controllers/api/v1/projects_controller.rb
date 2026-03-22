@@ -1,7 +1,7 @@
 module Api
   module V1
     class ProjectsController < BaseController
-      before_action :set_project, only: [:show, :update, :destroy, :summary]
+      before_action :set_project, only: [:show, :update, :destroy, :summary, :activity]
 
       def index
         projects = Project.all.order(created_at: :desc)
@@ -25,6 +25,21 @@ module Api
       def destroy
         @project.destroy!
         head :no_content
+      end
+
+      def activity
+        limit = (params[:limit] || 20).to_i.clamp(1, 50)
+        events = EventStore.recent(200).select do |event|
+          event[:metadata]&.dig("project_id") == @project.id ||
+            event[:metadata]&.dig(:project_id) == @project.id
+        end.first(limit)
+
+        render json: {
+          project_id: @project.id,
+          project_name: @project.name,
+          events: events,
+          total: events.size
+        }
       end
 
       def summary
