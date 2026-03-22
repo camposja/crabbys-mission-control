@@ -14,7 +14,7 @@ module Api
       private
 
       def gateway_status
-        gateway.get("/health")
+        gateway.health
         "connected"
       rescue
         "unreachable"

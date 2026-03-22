@@ -32,8 +32,14 @@ gem "thruster", require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
-# HTTP client for OpenClaw gateway calls
+# HTTP client for OpenClaw gateway health check (GET /health still works over HTTP)
 gem "faraday", "~> 2.0"
+
+# WebSocket client for OpenClaw gateway JSON-RPC
+gem "websocket", "~> 1.2"
+
+# Load .env file for OPENCLAW_GATEWAY_TOKEN etc.
+gem "dotenv-rails", groups: [:development, :test]
 
 # Background jobs
 gem "sidekiq", "~> 7.0"

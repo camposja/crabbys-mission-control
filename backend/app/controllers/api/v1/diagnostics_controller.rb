@@ -42,7 +42,7 @@ module Api
           render json: { status: "signal_sent", pid: pid }
         else
           # Fallback: just verify connectivity
-          gateway.get("/health")
+          gateway.health
           EventStore.emit(type: "gateway_restart", message: "Gateway restart requested — gateway is responding")
           render json: { status: "gateway_ok", note: "No PID file found; gateway appears healthy" }
         end
@@ -54,7 +54,7 @@ module Api
 
       def check_gateway
         start   = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        data    = gateway.get("/health")
+        data    = gateway.health
         latency = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
 
         sev = latency > 2000 ? "warning" : "ok"

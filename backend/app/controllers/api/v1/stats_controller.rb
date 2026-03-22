@@ -6,7 +6,7 @@ module Api
       def index
         # Agent count from OpenClaw (graceful fallback)
         agent_count = begin
-          data = gateway.get("/api/agents")
+          data = gateway.rpc("agents.list")
           agents = data.is_a?(Array) ? data : (data["agents"] || data["data"] || [])
           agents.length
         rescue

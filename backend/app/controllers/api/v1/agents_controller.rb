@@ -7,7 +7,7 @@ module Api
         local_agents = ::Openclaw::WorkspaceReader.list_local_agents
 
         gateway_agents = begin
-          data = gateway.get("/api/agents")
+          data = gateway.rpc("agents.list")
           Array.wrap(data.is_a?(Array) ? data : (data["agents"] || data["data"] || []))
         rescue
           []
@@ -49,7 +49,11 @@ module Api
       def show
         agent_id = params[:id]
         data = begin
-          gateway.get("/api/agents/#{agent_id}")
+          # agents.list returns all agents; filter for the one we want.
+          # There is also agent.identity.get but agents.list is more reliable.
+          all = gateway.rpc("agents.list")
+          agents = Array.wrap(all.is_a?(Array) ? all : (all["agents"] || all["data"] || []))
+          agents.find { |a| a["id"] == agent_id } || {}
         rescue
           {}
         end
@@ -59,30 +63,34 @@ module Api
       end
 
       # POST /api/v1/agents/:id/pause
+      # NOTE: No known RPC method for pause. This is a documented gap.
+      # The gateway does not expose an agent pause/resume/terminate RPC.
       def pause
-        result = gateway.post("/api/agents/#{params[:id]}/pause", {})
-        ::EventStore.emit(type: "agent_paused", message: "Agent #{params[:id]} paused", agent_id: params[:id])
-        render json: result
-      rescue => e
-        render json: { error: e.message }, status: :bad_gateway
+        render json: {
+          error: "Agent pause is not supported by the OpenClaw gateway RPC protocol. " \
+                 "No pause RPC method exists. This is a known gap.",
+          agent_id: params[:id]
+        }, status: :not_implemented
       end
 
       # POST /api/v1/agents/:id/resume
+      # NOTE: No known RPC method for resume. This is a documented gap.
       def resume
-        result = gateway.post("/api/agents/#{params[:id]}/resume", {})
-        ::EventStore.emit(type: "agent_resumed", message: "Agent #{params[:id]} resumed", agent_id: params[:id])
-        render json: result
-      rescue => e
-        render json: { error: e.message }, status: :bad_gateway
+        render json: {
+          error: "Agent resume is not supported by the OpenClaw gateway RPC protocol. " \
+                 "No resume RPC method exists. This is a known gap.",
+          agent_id: params[:id]
+        }, status: :not_implemented
       end
 
       # DELETE /api/v1/agents/:id
+      # NOTE: No known RPC method for terminate. This is a documented gap.
       def terminate
-        result = gateway.post("/api/agents/#{params[:id]}/terminate", {})
-        ::EventStore.emit(type: "agent_terminated", message: "Agent #{params[:id]} terminated", agent_id: params[:id])
-        render json: result
-      rescue => e
-        render json: { error: e.message }, status: :bad_gateway
+        render json: {
+          error: "Agent terminate is not supported by the OpenClaw gateway RPC protocol. " \
+                 "No terminate RPC method exists. This is a known gap.",
+          agent_id: params[:id]
+        }, status: :not_implemented
       end
     end
   end

@@ -21,9 +21,9 @@ module Api
           end
         end
 
-        # Also try to get live list from gateway
+        # Also try to get live list from gateway via RPC
         gateway_models = begin
-          gateway.get("/api/models")
+          gateway.rpc("models.list")
         rescue
           []
         end
@@ -36,7 +36,7 @@ module Api
       end
 
       def live
-        data = gateway.get("/api/models")
+        data = gateway.rpc("models.list")
         render json: data
       rescue => e
         render json: { error: e.message, models: [] }, status: :ok

@@ -27,11 +27,11 @@ module Api
         PROMPT
 
         begin
-          response = gateway.post("/api/message", {
-            agent_id:   "main",
+          response = gateway.chat_send(
             content:    prompt,
+            agent_id:   "main",
             session_id: "mission-suggest"
-          })
+          )
           suggestion = response.dig("message", "content") || response["content"] || ""
           render json: { suggestion: suggestion.strip }
         rescue => e

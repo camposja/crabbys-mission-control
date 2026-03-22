@@ -3,7 +3,11 @@ module Api
     module Openclaw
       class MessagesController < BaseController
         def create
-          data = gateway.post("/api/message", message_params)
+          data = gateway.chat_send(
+            content:    message_params[:content],
+            agent_id:   message_params[:agent_id] || "main",
+            session_id: message_params[:session_id] || "main"
+          )
           render json: data, status: :created
         end
 

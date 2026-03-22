@@ -3,13 +3,20 @@ module Api
     module Openclaw
       class AgentsController < BaseController
         def index
-          data = gateway.get("/api/agents")
+          data = gateway.rpc("agents.list")
           render json: data
         end
 
         def show
-          data = gateway.get("/api/agents/#{params[:id]}")
-          render json: data
+          # agents.list returns all; filter by id
+          all = gateway.rpc("agents.list")
+          agents = Array.wrap(all.is_a?(Array) ? all : (all["agents"] || all["data"] || []))
+          agent = agents.find { |a| a["id"] == params[:id] }
+          if agent
+            render json: agent
+          else
+            render json: { error: "Agent not found" }, status: :not_found
+          end
         end
       end
     end

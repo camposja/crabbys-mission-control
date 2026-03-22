@@ -3,6 +3,8 @@
 #
 # Scheduled via solid_queue recurring jobs (config/recurring.yml).
 # Falls back gracefully if OpenClaw is unreachable.
+#
+# Uses `logs.tail` RPC (replaces the old HTTP GET /api/events/recent which never existed).
 class OpenclawEventPollerJob < ApplicationJob
   queue_as :default
 
@@ -11,12 +13,12 @@ class OpenclawEventPollerJob < ApplicationJob
   def perform
     client = Openclaw::GatewayClient.new
 
-    # Try to fetch recent events from the gateway
     begin
-      data = client.get("/api/events/recent")
-      events = Array.wrap(data["events"] || data)
+      data = client.rpc("logs.tail")
+      events = Array.wrap(data.is_a?(Hash) ? (data["events"] || data["logs"] || data["entries"] || [data]) : data)
 
       events.each do |ev|
+        next unless ev.is_a?(Hash)
         EventStore.emit(
           type:     ev["type"]     || "agent_event",
           message:  ev["message"]  || ev["content"] || ev.to_json,
@@ -24,7 +26,7 @@ class OpenclawEventPollerJob < ApplicationJob
           metadata: ev.except("type", "message", "agent_id", "agentId", "content")
         )
       end
-    rescue Openclaw::GatewayError, Faraday::Error => e
+    rescue Openclaw::GatewayError => e
       # Don't flood the event feed with connection errors — just log
       Rails.logger.warn("[OpenclawEventPollerJob] Gateway unreachable: #{e.message}")
     end
