@@ -49,7 +49,7 @@ module Api
         ::EventStore.emit(
           type:    "plan_approved",
           message: "Plan approved for \"#{@task.title}\" — spawning agent",
-          metadata: { task_id: @task.id }
+          metadata: { task_id: @task.id, project_id: @task.project_id }
         )
 
         render json: { task: @task, message: "Plan approved. Agent is being spawned." }

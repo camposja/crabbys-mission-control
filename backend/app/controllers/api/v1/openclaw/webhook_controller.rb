@@ -55,7 +55,7 @@ module Api
               type:     event_type.presence || "webhook_event",
               message:  message || params.to_unsafe_h.to_json,
               agent_id: agent_id,
-              metadata: { task_id: task&.id, raw: params.to_unsafe_h.except("controller", "action") }
+              metadata: { task_id: task&.id, project_id: task&.project_id, raw: params.to_unsafe_h.except("controller", "action") }
             )
           end
 
@@ -98,7 +98,7 @@ module Api
             type:     "agent_started",
             message:  message || "Agent #{agent_id} started working on \"#{task.title}\"",
             agent_id: agent_id,
-            metadata: { task_id: task.id }
+            metadata: { task_id: task.id, project_id: task.project_id }
           )
         end
 
@@ -120,7 +120,7 @@ module Api
             type:     "agent_completed",
             message:  message || "Agent #{agent_id} completed#{task ? " task \"#{task.title}\"" : ""}",
             agent_id: agent_id,
-            metadata: { task_id: task&.id }
+            metadata: { task_id: task&.id, project_id: task&.project_id }
           )
         end
 
@@ -134,7 +134,7 @@ module Api
             type:     "agent_failed",
             message:  message || "Agent #{agent_id} failed#{task ? " on task \"#{task.title}\"" : ""}",
             agent_id: agent_id,
-            metadata: { task_id: task&.id }
+            metadata: { task_id: task&.id, project_id: task&.project_id }
           )
         end
 
@@ -149,7 +149,7 @@ module Api
             type:     "agent_status_updated",
             message:  message || "Agent #{agent_id} → #{status}",
             agent_id: agent_id,
-            metadata: { task_id: task&.id, agent_status: status }
+            metadata: { task_id: task&.id, project_id: task&.project_id, agent_status: status }
           )
         end
 
@@ -172,7 +172,7 @@ module Api
             type:     "task_moved",
             message:  message || "Task \"#{task.title}\" moved to #{column} by agent #{agent_id}",
             agent_id: agent_id,
-            metadata: { task_id: task.id, old_status: old_status, new_status: column }
+            metadata: { task_id: task.id, project_id: task.project_id, old_status: old_status, new_status: column }
           )
         end
       end

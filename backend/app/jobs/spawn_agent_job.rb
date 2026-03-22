@@ -69,7 +69,7 @@ class SpawnAgentJob < ApplicationJob
       ::EventStore.emit(
         type:     "spawn_requested",
         message:  "Spawn requested for \"#{task.title}\" via chat (no native spawn RPC)",
-        metadata: { task_id: task.id }
+        metadata: { task_id: task.id, project_id: task.project_id }
       )
     rescue ::Openclaw::GatewayError => e
       # Gateway unreachable — mark as pending so user knows to retry
@@ -78,7 +78,7 @@ class SpawnAgentJob < ApplicationJob
       ::EventStore.emit(
         type:     "error",
         message:  "Failed to spawn agent for \"#{task.title}\": #{e.message}",
-        metadata: { task_id: task.id }
+        metadata: { task_id: task.id, project_id: task.project_id }
       )
     end
   end
