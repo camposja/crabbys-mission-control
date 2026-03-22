@@ -18,17 +18,38 @@ class SpawnAgentJob < ApplicationJob
       # As a workaround, send a chat message to the main agent asking it to
       # create a sub-agent for this task.
       agent_name = "task-#{task.id}-#{task.title.parameterize.truncate(30, omission: '')}"
+      webhook_url = "#{ENV.fetch('MISSION_CONTROL_URL', 'http://localhost:3000')}/api/v1/openclaw/webhook"
+      webhook_token = ENV["MISSION_CONTROL_WEBHOOK_TOKEN"]
+      auth_header_instruction = webhook_token.present? ? "\n        Header: X-Mission-Control-Token: #{webhook_token}" : ""
+
       spawn_prompt = <<~MSG
         SPAWN SUB-AGENT REQUEST from Mission Control.
 
         Please create a sub-agent scoped to the following task:
-        - Task ID: #{task.id}
-        - Title: #{task.title}
-        - Priority: #{task.priority || "medium"}
-        - Description: #{task.plan_content || task.description || task.title}
 
-        Suggested agent name: #{agent_name}
-        Source: crabbys-mission-control
+        === TASK (machine-readable) ===
+        task_id: #{task.id}
+        title: #{task.title}
+        priority: #{task.priority || "medium"}
+        description: #{task.plan_content || task.description || task.title}
+        suggested_agent_name: #{agent_name}
+        source: crabbys-mission-control
+        === END TASK ===
+
+        IMPORTANT — Webhook callbacks required:
+        The sub-agent MUST call back to Mission Control at each lifecycle stage.
+        Webhook URL: #{webhook_url}#{auth_header_instruction}
+
+        1. When the agent STARTS work, POST:
+           {"event_type": "agent_status", "task_id": "#{task.id}", "agent_id": "<your-agent-id>", "status": "started"}
+
+        2. When the agent COMPLETES work, POST:
+           {"event_type": "agent_completed", "task_id": "#{task.id}", "agent_id": "<your-agent-id>"}
+
+        3. If the agent FAILS, POST:
+           {"event_type": "agent_failed", "task_id": "#{task.id}", "agent_id": "<your-agent-id>", "message": "<error details>"}
+
+        The task_id field is REQUIRED in all callbacks. It is the canonical key for linking agents to tasks.
       MSG
 
       response = client.chat_send(
