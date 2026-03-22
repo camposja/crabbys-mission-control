@@ -1,10 +1,13 @@
 import { NavLink } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
-  Bot, CalendarDays, BarChart2, Settings, Zap,
+  Bot, CalendarDays, BarChart2, Settings,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
+  WifiOff, Wifi, Loader,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { dashboardApi } from "../../api/dashboard";
 
 const nav = [
   { to: "/",          icon: LayoutDashboard,  label: "Dashboard"  },
@@ -22,6 +25,61 @@ const nav = [
   { to: "/feedback",  icon: MessageSquarePlus,label: "Feedback"    },
   { to: "/settings",  icon: Settings,         label: "Settings"    },
 ];
+
+function GatewayStatus() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey:  ["gateway-health"],
+    queryFn:   dashboardApi.getGateway,
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2">
+        <Loader size={11} className="text-gray-600 animate-spin" />
+        <span className="text-xs text-gray-600">Checking gateway…</span>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex items-center gap-2" title="Could not reach the Rails backend">
+        <WifiOff size={11} className="text-red-500" />
+        <span className="text-xs text-red-400">Backend offline</span>
+      </div>
+    );
+  }
+
+  if (data.status === "connected") {
+    return (
+      <div
+        className="flex items-center gap-2"
+        title={`Gateway OK · ${data.latency_ms}ms · ${data.gateway_url}`}
+      >
+        <Wifi size={11} className="text-green-400" />
+        <span className="text-xs text-green-400">
+          OpenClaw connected
+          {data.latency_ms != null && (
+            <span className="text-gray-600 ml-1">· {data.latency_ms}ms</span>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  // status === "unreachable" (or any other non-connected value)
+  return (
+    <div
+      className="flex items-center gap-2"
+      title={data.error || "Gateway did not respond"}
+    >
+      <WifiOff size={11} className="text-red-500" />
+      <span className="text-xs text-red-400">Gateway unreachable</span>
+    </div>
+  );
+}
 
 export default function Sidebar() {
   return (
@@ -59,12 +117,9 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Gateway status */}
+      {/* Gateway status — dynamic, polls every 30 s */}
       <div className="px-4 py-3 border-t border-gray-800">
-        <div className="flex items-center gap-2">
-          <Zap size={12} className="text-green-400" />
-          <span className="text-xs text-gray-500">OpenClaw connected</span>
-        </div>
+        <GatewayStatus />
       </div>
     </aside>
   );
