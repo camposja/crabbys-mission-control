@@ -23,7 +23,7 @@ module Api
           type:     "task_created",
           message:  "New task \"#{task.title}\" added to #{task.status}",
           agent_id: task.assignee,
-          metadata: { task_id: task.id, status: task.status, priority: task.priority }
+          metadata: { task_id: task.id, status: task.status, priority: task.priority, project_id: task.project_id }
         )
         # Auto-create a calendar event when the task has a deadline
         if task.due_date.present?
@@ -69,7 +69,7 @@ module Api
           type:     "task_moved",
           message:  "Task \"#{@task.title}\" moved from #{old_status} → #{new_status}",
           agent_id: @task.assignee,
-          metadata: { task_id: @task.id, old_status: old_status, new_status: new_status }
+          metadata: { task_id: @task.id, old_status: old_status, new_status: new_status, project_id: @task.project_id }
         )
 
         render json: @task
