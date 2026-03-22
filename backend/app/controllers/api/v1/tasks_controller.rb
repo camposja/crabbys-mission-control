@@ -19,6 +19,13 @@ module Api
         task.position = Task.where(status: task.status).count
         task.save!
         ActionCable.server.broadcast("task_updates", { event: "task_created", task: task.as_json })
+        if task.project_id.present?
+          ActionCable.server.broadcast("project_updates:#{task.project_id}", {
+            event: "task_changed",
+            project_id: task.project_id,
+            task_id: task.id
+          })
+        end
         ::EventStore.emit(
           type:     "task_created",
           message:  "New task \"#{task.title}\" added to #{task.status}",
@@ -63,6 +70,14 @@ module Api
           old_status: old_status,
           new_status: @task.status
         })
+
+        if @task.project_id.present?
+          ActionCable.server.broadcast("project_updates:#{@task.project_id}", {
+            event: "task_changed",
+            project_id: @task.project_id,
+            task_id: @task.id
+          })
+        end
 
         # Push to EventStore so OpenClaw heartbeats can see task state changes
         ::EventStore.emit(
