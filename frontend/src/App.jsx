@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout      from "./components/layout/AppLayout";
 import DashboardPage  from "./pages/dashboard/DashboardPage";
 import TasksPage      from "./pages/tasks/TasksPage";
-import ProjectsPage   from "./pages/projects/ProjectsPage";
+import ProjectsPage      from "./pages/projects/ProjectsPage";
+import ProjectDetailPage from "./pages/projects/ProjectDetailPage";
 import AgentsPage     from "./pages/agents/AgentsPage";
 import TeamPage       from "./pages/team/TeamPage";
 import MemoryPage     from "./pages/memory/MemoryPage";
@@ -31,6 +32,7 @@ export default function App() {
             <Route index             element={<DashboardPage />} />
             <Route path="tasks"      element={<TasksPage />} />
             <Route path="projects"   element={<ProjectsPage />} />
+            <Route path="projects/:id" element={<ProjectDetailPage />} />
             <Route path="agents"     element={<AgentsPage />} />
             <Route path="team"       element={<TeamPage />} />
             <Route path="memory"     element={<MemoryPage />} />
