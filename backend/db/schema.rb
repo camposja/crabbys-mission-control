@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_23_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -21,18 +21,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_000003) do
     t.text "description"
     t.datetime "ends_at"
     t.string "event_type"
+    t.text "execution_detail"
     t.string "gateway_reference"
     t.datetime "last_run_at"
     t.jsonb "metadata"
     t.datetime "next_run_at"
     t.bigint "project_id"
     t.string "recurrence"
+    t.integer "run_attempts", default: 0, null: false
     t.string "source", default: "manual", null: false
     t.datetime "starts_at"
     t.string "status", default: "scheduled", null: false
     t.bigint "task_id"
     t.string "title"
     t.datetime "updated_at", null: false
+    t.string "verification_source"
+    t.datetime "verified_at"
     t.index ["agent_id"], name: "index_calendar_events_on_agent_id"
     t.index ["cron_job_id"], name: "index_calendar_events_on_cron_job_id"
     t.index ["next_run_at"], name: "index_calendar_events_on_next_run_at"
