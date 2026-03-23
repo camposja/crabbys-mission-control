@@ -38,7 +38,12 @@ Rails.application.routes.draw do
 
       # Calendar / cron
       resources :calendar_events
-      resources :cron_jobs
+      resources :cron_jobs do
+        member do
+          patch :toggle
+          post  :run_now
+        end
+      end
 
       # Agents (direct, merged with gateway)
       resources :agents, only: [:index, :show] do

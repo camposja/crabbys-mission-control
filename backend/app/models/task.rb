@@ -4,6 +4,7 @@ class Task < ApplicationRecord
   PRIORITIES = %w[low medium high urgent].freeze
 
   belongs_to :project, optional: true
+  has_many   :calendar_events, dependent: :nullify
 
   validates :title, presence: true
   validates :priority, inclusion: { in: PRIORITIES }, allow_nil: true
