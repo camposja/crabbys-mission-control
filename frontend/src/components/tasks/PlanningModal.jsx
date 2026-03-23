@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { X, Loader2, CheckCircle, ChevronRight, Bot } from "lucide-react";
 import { tasksApi } from "../../api/tasks";
@@ -7,17 +7,22 @@ import { cn } from "../../lib/utils";
 const STEPS = { QUESTIONS: "questions", PLAN: "plan", DONE: "done" };
 
 export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
-  const [step,    setStep]    = useState(STEPS.QUESTIONS);
+  const [step, setStep] = useState(STEPS.QUESTIONS);
   const [answers, setAnswers] = useState([]);
-  const [plan,    setPlan]    = useState("");
+  const [plan, setPlan] = useState("");
   const [questions, setQuestions] = useState([]);
+  const [error, setError] = useState(null);
 
   // Step 1: fetch clarifying questions
   const questionsMutation = useMutation({
     mutationFn: () => tasksApi.getPlan(task.id),
     onSuccess: (data) => {
+      setError(null);
       setQuestions(data.questions || []);
       setAnswers(Array(data.questions?.length || 0).fill(""));
+    },
+    onError: (err) => {
+      setError(err?.response?.data?.error || err.message || "Failed to generate clarifying questions.");
     },
   });
 
@@ -25,8 +30,12 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
   const planMutation = useMutation({
     mutationFn: () => tasksApi.getPlan(task.id, answers),
     onSuccess: (data) => {
+      setError(null);
       setPlan(data.plan || "");
       setStep(STEPS.PLAN);
+    },
+    onError: (err) => {
+      setError(err?.response?.data?.error || err.message || "Failed to generate plan.");
     },
   });
 
@@ -34,15 +43,27 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
   const approveMutation = useMutation({
     mutationFn: () => tasksApi.approvePlan(task.id, plan),
     onSuccess: () => {
+      setError(null);
       setStep(STEPS.DONE);
       setTimeout(() => onApproved?.(), 1200);
     },
+    onError: (err) => {
+      setError(err?.response?.data?.error || err.message || "Failed to approve plan.");
+    },
   });
 
-  // Kick off question fetch when modal first renders
-  if (step === STEPS.QUESTIONS && !questionsMutation.data && !questionsMutation.isPending) {
+  useEffect(() => {
+    setStep(STEPS.QUESTIONS);
+    setQuestions([]);
+    setAnswers([]);
+    setPlan("");
+    setError(null);
+    questionsMutation.reset();
+    planMutation.reset();
+    approveMutation.reset();
     questionsMutation.mutate();
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -64,6 +85,22 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
+
+          {error && (
+            <div className="mb-4 flex items-center gap-2 bg-red-950/50 border border-red-800 rounded-lg px-4 py-2.5">
+              <p className="text-sm text-red-400 flex-1">{error}</p>
+              <button
+                onClick={() => {
+                  setError(null);
+                  if (step === STEPS.QUESTIONS) questionsMutation.mutate();
+                  if (step === STEPS.PLAN) planMutation.mutate();
+                }}
+                className="text-xs text-red-300 hover:text-white transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {/* Loading questions */}
           {questionsMutation.isPending && (
