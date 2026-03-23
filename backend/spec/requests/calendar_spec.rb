@@ -157,6 +157,67 @@ RSpec.describe "Calendar API", type: :request do
     end
   end
 
+  # ── GET /api/v1/calendar/events/:id/history ────────────────────────────────
+  describe "GET /api/v1/calendar/events/:id/history" do
+    before { EventStore.clear }
+
+    it "returns the correct response shape" do
+      event = create(:calendar_event, title: "Verify me", starts_at: 2.hours.from_now, status: "scheduled")
+
+      get "/api/v1/calendar/events/#{event.id}/history", headers: headers
+      expect(response).to have_http_status(:ok)
+
+      body = JSON.parse(response.body)
+      expect(body).to have_key("event")
+      expect(body).to have_key("verification")
+      expect(body).to have_key("task")
+      expect(body).to have_key("relevant_events")
+
+      expect(body["event"]["id"]).to eq(event.id)
+      expect(body["event"]).to have_key("run_attempts")
+      expect(body["event"]).to have_key("verified_at")
+      expect(body["event"]).to have_key("verification_source")
+      expect(body["event"]).to have_key("execution_detail")
+
+      expect(body["verification"]).to have_key("verified")
+      expect(body["verification"]).to have_key("suggested_status")
+      expect(body["verification"]).to have_key("verification_source")
+      expect(body["verification"]).to have_key("detail")
+      expect(body["verification"]).to have_key("checked_at")
+    end
+
+    it "returns task data when event has a linked task" do
+      task = create(:task, :done, title: "Deploy v2", agent_status: "completed")
+      event = create(:calendar_event, :with_task, task: task, starts_at: 2.hours.ago, status: "scheduled")
+
+      get "/api/v1/calendar/events/#{event.id}/history", headers: headers
+      body = JSON.parse(response.body)
+
+      expect(body["task"]).to be_a(Hash)
+      expect(body["task"]["id"]).to eq(task.id)
+      expect(body["task"]["title"]).to eq("Deploy v2")
+      expect(body["task"]["status"]).to eq("done")
+      expect(body["task"]["agent_status"]).to eq("completed")
+    end
+
+    it "returns verification result reflecting task state" do
+      task = create(:task, :done, agent_status: "completed")
+      event = create(:calendar_event, :with_task, task: task, starts_at: 2.hours.ago, status: "scheduled")
+
+      get "/api/v1/calendar/events/#{event.id}/history", headers: headers
+      body = JSON.parse(response.body)
+
+      expect(body["verification"]["verified"]).to be true
+      expect(body["verification"]["suggested_status"]).to eq("completed")
+      expect(body["verification"]["verification_source"]).to eq("task_state")
+    end
+
+    it "returns 404 for non-existent event" do
+      get "/api/v1/calendar/events/999999/history", headers: headers
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   # ── GET /api/v1/calendar/summary ───────────────────────────────────────────
   describe "GET /api/v1/calendar/summary" do
     before do

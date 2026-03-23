@@ -41,6 +41,25 @@ module Api
         render json: build_summary
       end
 
+      # GET /api/v1/calendar/events/:id/history
+      def history
+        event = CalendarEvent.find(params[:id])
+        result = Calendar::ExecutionVerifier.new(event).call
+
+        render json: {
+          event: serialize_event_with_verification(event.reload),
+          verification: {
+            verified:            result[:verified],
+            suggested_status:    result[:suggested_status],
+            verification_source: result[:verification_source],
+            detail:              result[:detail],
+            checked_at:          result[:checked_at]&.iso8601
+          },
+          task: result[:task],
+          relevant_events: result[:relevant_events]
+        }
+      end
+
       private
 
       def upcoming_events
@@ -91,6 +110,15 @@ module Api
           task:              event.task ? { id: event.task.id, title: event.task.title } : nil,
           project:           event.project ? { id: event.project.id, title: event.project.name } : nil
         }
+      end
+
+      def serialize_event_with_verification(event)
+        serialize_event(event).merge(
+          run_attempts:       event.run_attempts,
+          verified_at:        event.verified_at&.iso8601,
+          verification_source: event.verification_source,
+          execution_detail:   event.execution_detail
+        )
       end
 
       def serialize_cron_job(cron_job)

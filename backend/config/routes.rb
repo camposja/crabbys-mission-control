@@ -134,10 +134,11 @@ Rails.application.routes.draw do
 
       # Calendar dashboard (combined view)
       scope "calendar" do
-        get  "/",          to: "calendar#index",     as: :calendar
-        get  "events",     to: "calendar#events",    as: :calendar_events_range
-        get  "cron_jobs",  to: "calendar#cron_jobs",  as: :calendar_cron_jobs
-        get  "summary",    to: "calendar#summary",   as: :calendar_summary
+        get  "/",                  to: "calendar#index",     as: :calendar
+        get  "events",             to: "calendar#events",    as: :calendar_events_range
+        get  "events/:id/history", to: "calendar#history",   as: :calendar_event_history
+        get  "cron_jobs",          to: "calendar#cron_jobs",  as: :calendar_cron_jobs
+        get  "summary",            to: "calendar#summary",   as: :calendar_summary
       end
 
       # Upcoming calendar events (dashboard widget)
