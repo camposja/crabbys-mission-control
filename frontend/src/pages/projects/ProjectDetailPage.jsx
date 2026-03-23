@@ -84,8 +84,8 @@ function relativeTime(dateStr) {
 
 function getAssignee(id) {
   const map = {
-    jose:   { letter: "J", color: "bg-blue-600",   label: "Jose"   },
-    crabby: { letter: "C", color: "bg-orange-500",  label: "Crabby" },
+    jose:   { letter: "🧑🏽‍💻", color: "bg-gray-800",   label: "Jose"   },
+    crabby: { letter: "🦀",      color: "bg-gray-800",  label: "Crabby" },
   };
   const lower = id?.toLowerCase();
   return map[lower] || { letter: id?.[0]?.toUpperCase() || "?", color: "bg-gray-600", label: id };
@@ -507,10 +507,10 @@ function TaskRow({ task }) {
       {assignee && (
         <div
           className={cn(
-            "w-5 h-5 rounded-full flex items-center justify-center text-white font-bold shrink-0",
+            "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
             assignee.color
           )}
-          style={{ fontSize: "9px" }}
+          style={{ fontSize: "12px", lineHeight: 1 }}
           title={assignee.label}
         >
           {assignee.letter}
