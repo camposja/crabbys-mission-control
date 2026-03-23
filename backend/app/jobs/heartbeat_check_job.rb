@@ -6,28 +6,63 @@
 class HeartbeatCheckJob < ApplicationJob
   queue_as :default
 
+  STUCK_THRESHOLD = 10.minutes
+
   def perform
     crabby_tasks = Task.for_crabby.ordered
 
     if crabby_tasks.any?
-      # Build a compact summary for the heartbeat prompt
-      task_list = crabby_tasks.map do |t|
-        "- [#{t.status.upcase}] task_id=#{t.id} | #{t.title} (priority: #{t.priority || 'medium'})"
-      end.join("\n")
+      # Partition tasks into fresh vs stuck based on how long they've been unchanged
+      stuck_tasks, fresh_tasks = crabby_tasks.partition do |t|
+        t.agent_status.present? &&
+          %w[spawn_requested running in_progress].include?(t.agent_status) &&
+          (Time.current - t.updated_at) > STUCK_THRESHOLD
+      end
 
       webhook_url = "#{mc_url}/api/v1/openclaw/webhook"
       webhook_token = ENV["MISSION_CONTROL_WEBHOOK_TOKEN"]
       auth_header_line = webhook_token.present? ? "\n        Required header: X-Mission-Control-Token: #{webhook_token}" : ""
 
+      # Build task lists with appropriate urgency
+      parts = []
+
+      if stuck_tasks.any?
+        stuck_list = stuck_tasks.map do |t|
+          age = ((Time.current - t.updated_at) / 60).round
+          "- *** STUCK #{age}min *** [#{t.agent_status.upcase}] task_id=#{t.id} | #{t.title} (priority: #{t.priority || 'medium'})"
+        end.join("\n")
+
+        parts << <<~STUCK
+          URGENT — #{stuck_tasks.count} task(s) appear STUCK with no recent progress:
+
+          #{stuck_list}
+
+          These tasks have had no status update for over 10 minutes.
+          If you are still working on them, send a status webhook immediately.
+          If you have lost track of them, re-read the task and resume or report failure.
+        STUCK
+      end
+
+      if fresh_tasks.any?
+        fresh_list = fresh_tasks.map do |t|
+          "- [#{t.status.upcase}] task_id=#{t.id} | #{t.title} (priority: #{t.priority || 'medium'})"
+        end.join("\n")
+
+        parts << <<~FRESH
+          Active task(s) in your queue:
+
+          #{fresh_list}
+
+          Review your backlog and pick up any tasks you can action now.
+        FRESH
+      end
+
       message = <<~MSG
         HEARTBEAT CHECK — Mission Control task board update.
 
-        You have #{crabby_tasks.count} active task(s) assigned to you:
+        You have #{crabby_tasks.count} active task(s) assigned to you.
 
-        #{task_list}
-
-        Review your backlog and pick up any tasks you can action now.
-
+        #{parts.join("\n")}
         Webhook instructions (use task_id as the canonical key):
         Endpoint: POST #{webhook_url}#{auth_header_line}
 

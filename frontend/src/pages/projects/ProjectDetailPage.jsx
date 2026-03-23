@@ -153,7 +153,7 @@ export default function ProjectDetailPage() {
   const statusClass = STATUS_COLORS[project.status] || STATUS_COLORS.active;
   const completion = summary?.completion_percentage ?? 0;
   const totalTasks = summary?.total_tasks ?? 0;
-  const doneTasks = summary?.done_tasks ?? 0;
+  const doneTasks = summary?.tasks_by_status?.done ?? 0;
 
   return (
     <div className="p-6">
@@ -216,9 +216,7 @@ export default function ProjectDetailPage() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {Object.entries(TASK_STATUS_META).map(([key, meta]) => {
-            const count =
-              summary?.status_counts?.[key] ??
-              (key === "done" ? doneTasks : 0);
+            const count = summary?.tasks_by_status?.[key] ?? 0;
             return (
               <span key={key} className="flex items-center gap-1.5 text-xs text-gray-400">
                 <span className={cn("w-2 h-2 rounded-full", meta.dot)} />
@@ -610,7 +608,7 @@ function ActivityTab({ projectId }) {
     );
   }
 
-  const events = Array.isArray(activities) ? activities : [];
+  const events = activities?.events ?? [];
 
   if (events.length === 0) {
     return (
@@ -663,7 +661,7 @@ function ActivityRow({ event }) {
 function DocumentsTab({ projectId }) {
   const { data: documents, isLoading, isError } = useQuery({
     queryKey: ["documents", { project_id: projectId }],
-    queryFn: () => documentsApi.getAll(),
+    queryFn: () => documentsApi.getAll({ project_id: projectId }),
   });
 
   if (isLoading) {
@@ -679,7 +677,7 @@ function DocumentsTab({ projectId }) {
     );
   }
 
-  const docs = Array.isArray(documents) ? documents : [];
+  const docs = documents?.database ?? [];
 
   if (docs.length === 0) {
     return (
@@ -734,7 +732,7 @@ function MemoryTab({ projectId }) {
     );
   }
 
-  const items = Array.isArray(memories) ? memories : [];
+  const items = memories?.memories ?? [];
 
   if (items.length === 0) {
     return (

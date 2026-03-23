@@ -118,7 +118,7 @@ function ProjectCard({ project, onClick }) {
   const statusClass = STATUS_COLORS[project.status] || STATUS_COLORS.active;
   const completion = summary?.completion_percentage ?? 0;
   const totalTasks = summary?.total_tasks ?? 0;
-  const doneTasks = summary?.done_tasks ?? 0;
+  const doneTasks = summary?.tasks_by_status?.done ?? 0;
 
   return (
     <button
