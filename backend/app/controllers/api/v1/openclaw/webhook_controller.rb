@@ -104,6 +104,7 @@ module Api
 
         def handle_agent_completed(task, agent_id, message)
           if task
+            old_status = task.status
             updates = { agent_status: "completed", status: "done" }
             updates[:openclaw_agent_id] = agent_id if agent_id.present? && task.openclaw_agent_id.blank?
             task.update_columns(updates)
@@ -111,7 +112,7 @@ module Api
               event:      "task_moved",
               task_id:    task.id,
               task_title: task.title,
-              old_status: task.status_before_last_save,
+              old_status: old_status,
               new_status: "done",
               source:     "agent_webhook"
             })
