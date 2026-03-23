@@ -42,6 +42,14 @@ class Task < ApplicationRecord
   scope :by_status,   ->(s) { where(status: s) }
   scope :ordered,     -> { order(:position, :created_at) }
   scope :for_crabby,  -> { where(assignee: "crabby").where.not(status: "done") }
+  scope :orphaned_agents, -> {
+    where(openclaw_agent_id: nil)
+      .where(agent_status: %w[spawn_requested running in_progress])
+  }
+  scope :active_agents, -> {
+    where.not(openclaw_agent_id: nil)
+      .where.not(agent_status: %w[completed failed spawn_failed])
+  }
 
   after_update_commit :broadcast_update
 

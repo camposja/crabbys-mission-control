@@ -26,21 +26,19 @@ class AgentStatusSyncJob < ApplicationJob
     "crashed"   => "failed",
   }.freeze
 
+  STALE_THRESHOLD = 15.minutes
+  SPAWN_TIMEOUT   = 15.minutes
+
   def perform
     # Find tasks that have a linked agent but haven't reached a terminal state
     tasks = Task.where.not(openclaw_agent_id: nil)
                 .where.not(agent_status: %w[completed failed spawn_failed])
 
-    # Warn about tasks that are in_progress / spawn_requested but have no agent linked yet.
-    # These may have an agent working them that hasn't called back with its ID.
-    orphaned = Task.where(openclaw_agent_id: nil)
-                   .where(agent_status: %w[spawn_requested running in_progress])
-    orphaned.each do |t|
-      Rails.logger.warn(
-        "[AgentStatusSyncJob] Task #{t.id} (\"#{t.title}\") is #{t.agent_status} but has no openclaw_agent_id — " \
-        "waiting for agent to call back via webhook with task_id"
-      )
-    end
+    # Detect and recover orphaned tasks (no agent_id linked)
+    recover_orphaned_tasks
+
+    # Detect tasks stuck in active states for too long
+    detect_stale_tasks(tasks)
 
     return if tasks.none?
 
@@ -110,5 +108,66 @@ class AgentStatusSyncJob < ApplicationJob
     # Gateway may return { status: }, { state: }, or { agent: { status: } }
     data["status"] || data["state"] ||
       data.dig("agent", "status") || data.dig("agent", "state")
+  end
+
+  # Tasks in spawn_requested/running/in_progress with no openclaw_agent_id.
+  # If stuck in spawn_requested for >SPAWN_TIMEOUT, mark as spawn_failed.
+  # Otherwise, log a warning and nudge the agent.
+  def recover_orphaned_tasks
+    orphaned = Task.where(openclaw_agent_id: nil)
+                   .where(agent_status: %w[spawn_requested running in_progress])
+
+    orphaned.each do |task|
+      age = Time.current - (task.state_changed_at || task.updated_at)
+
+      if task.agent_status == "spawn_requested" && age > SPAWN_TIMEOUT
+        # Spawn likely failed silently — no agent ever called back
+        task.update_columns(agent_status: "spawn_failed")
+        Rails.logger.error(
+          "[AgentStatusSyncJob] Task #{task.id} (\"#{task.title}\") stuck in spawn_requested " \
+          "for #{(age / 60).round}min with no agent_id — marking spawn_failed"
+        )
+        EventStore.emit(
+          type:     "spawn_failed",
+          message:  "Task \"#{task.title}\" spawn timed out — no agent responded after #{(age / 60).round}min",
+          metadata: { task_id: task.id, project_id: task.project_id, agent_status: "spawn_failed" }
+        )
+        ActionCable.server.broadcast("task_updates", {
+          event:      "agent_status_changed",
+          task_id:    task.id,
+          task_title: task.title,
+          old_status: "spawn_requested",
+          new_status: "spawn_failed",
+          source:     "stale_detection"
+        })
+      else
+        Rails.logger.warn(
+          "[AgentStatusSyncJob] Task #{task.id} (\"#{task.title}\") is #{task.agent_status} but has no openclaw_agent_id — " \
+          "waiting for agent to call back via webhook with task_id (age: #{(age / 60).round}min)"
+        )
+      end
+    end
+  end
+
+  # Tasks with a linked agent that have been in a non-terminal state too long.
+  # Emit a warning event so operators can see them in the dashboard.
+  def detect_stale_tasks(tasks)
+    tasks.each do |task|
+      age = Time.current - task.updated_at
+      next unless age > STALE_THRESHOLD
+
+      Rails.logger.warn(
+        "[AgentStatusSyncJob] Task #{task.id} (\"#{task.title}\") appears stale — " \
+        "agent_status=#{task.agent_status}, last update #{(age / 60).round}min ago"
+      )
+      EventStore.emit(
+        type:     "task_stale",
+        message:  "Task \"#{task.title}\" may be stuck — agent #{task.openclaw_agent_id} " \
+                  "has been #{task.agent_status} for #{(age / 60).round}min with no update",
+        agent_id: task.openclaw_agent_id,
+        metadata: { task_id: task.id, project_id: task.project_id,
+                    agent_status: task.agent_status, stale_minutes: (age / 60).round }
+      )
+    end
   end
 end
