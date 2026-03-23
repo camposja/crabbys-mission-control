@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_23_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -56,11 +56,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_000002) do
     t.datetime "next_run_at"
     t.bigint "project_id"
     t.string "status", default: "idle"
+    t.string "sync_source"
+    t.datetime "synced_at"
     t.bigint "task_id"
     t.datetime "updated_at", null: false
     t.index ["agent_id"], name: "index_cron_jobs_on_agent_id"
     t.index ["enabled"], name: "index_cron_jobs_on_enabled"
     t.index ["project_id"], name: "index_cron_jobs_on_project_id"
+    t.index ["sync_source"], name: "index_cron_jobs_on_sync_source"
     t.index ["task_id"], name: "index_cron_jobs_on_task_id"
   end
 

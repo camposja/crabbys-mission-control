@@ -62,7 +62,13 @@ module Api
                                         .where(updated_at: now.beginning_of_day..now.end_of_day)
                                         .count,
           active_cron_jobs: CronJob.enabled.count,
-          checked_at:       now.iso8601
+          checked_at:       now.iso8601,
+          gateway_sync: {
+            last_synced_at:             CronJob.where.not(synced_at: nil).maximum(:synced_at)&.iso8601,
+            gateway_supports_schedule:  CronJob.where(sync_source: "gateway").exists?,
+            local_only_cron_jobs:       CronJob.where(sync_source: [nil, "local", "manual"]).count,
+            gateway_synced_cron_jobs:   CronJob.where(sync_source: "gateway").count
+          }
         }
       end
 
