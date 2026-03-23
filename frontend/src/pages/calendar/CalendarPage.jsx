@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, Clock, RefreshCw, Play, ToggleLeft, ToggleRight,
   AlertTriangle, CheckCircle, XCircle, ChevronDown,
-  Loader2, CalendarClock, Timer, Ban, CircleDot,
+  Loader2, CalendarClock, Timer, Ban,
 } from "lucide-react";
 import { calendarApi } from "../../api/calendar";
 import { cronJobsApi } from "../../api/cronJobs";

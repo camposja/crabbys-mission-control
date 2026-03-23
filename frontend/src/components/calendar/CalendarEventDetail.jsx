@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
-  X, Loader2, CheckCircle, XCircle, AlertTriangle,
-  Clock, CalendarClock, Link2, Bot, FolderOpen, Hash,
+  X, Loader2, XCircle, AlertTriangle,
+  CalendarClock, Link2, FolderOpen, Hash,
   ShieldCheck, ShieldAlert, Info,
 } from "lucide-react";
 import { calendarApi } from "../../api/calendar";
@@ -146,13 +146,13 @@ function VerificationSection({ eventId, open }) {
             </p>
           )}
 
-          {verification.execution_detail && (
+          {verification.detail && (
             <DetailRow label="Detail">
-              {verification.execution_detail}
+              {verification.detail}
             </DetailRow>
           )}
 
-          {verification.suggested_status && verification.suggested_status !== data?.status && (
+          {verification.suggested_status && verification.suggested_status !== data?.event?.status && (
             <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded px-2.5 py-1.5">
               <AlertTriangle size={12} className="text-yellow-400 shrink-0" />
               <span className="text-xs text-yellow-300">
