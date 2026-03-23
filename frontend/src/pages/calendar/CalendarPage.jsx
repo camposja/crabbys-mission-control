@@ -7,10 +7,12 @@ import {
 } from "lucide-react";
 import { calendarApi } from "../../api/calendar";
 import { cronJobsApi } from "../../api/cronJobs";
+import { projectsApi } from "../../api/projects";
 import { cn } from "../../lib/utils";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
 import CronJobDetail from "../../components/calendar/CronJobDetail";
+import EventRow from "../../components/calendar/EventRow";
 
 // ── Status config ────────────────────────────────────────────────────────────
 const EVENT_STATUS = {
@@ -134,9 +136,9 @@ function SummaryStrip({ summary, isLoading }) {
 }
 
 // ── Filter bar ───────────────────────────────────────────────────────────────
-function FilterBar({ statusFilter, setStatusFilter, sourceFilter, setSourceFilter }) {
+function FilterBar({ statusFilter, setStatusFilter, sourceFilter, setSourceFilter, projectFilter, setProjectFilter, projects }) {
   return (
-    <div className="flex items-center gap-3 mb-4">
+    <div className="flex items-center gap-3 mb-4 flex-wrap">
       <span className="text-sm text-gray-400">Filters:</span>
       <div className="relative">
         <select
@@ -166,62 +168,25 @@ function FilterBar({ statusFilter, setStatusFilter, sourceFilter, setSourceFilte
         </select>
         <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
       </div>
-    </div>
-  );
-}
-
-// ── Event row ────────────────────────────────────────────────────────────────
-function EventRow({ event, onClick }) {
-  const status = EVENT_STATUS[event.status] || EVENT_STATUS.scheduled;
-
-  return (
-    <div
-      className="flex items-start gap-3 px-4 py-3 hover:bg-gray-800/60 transition-colors rounded-lg cursor-pointer"
-      onClick={onClick}
-    >
-      {/* Status dot */}
-      <span className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", status.dot)} />
-
-      {/* Main content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-white font-medium truncate">{event.title}</span>
-          <span className={cn("text-xs px-1.5 py-0.5 rounded border", status.bg, status.color)}>
-            {status.label}
-          </span>
-          {event.source && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-400">
-              {SOURCE_LABELS[event.source] || event.source}
-            </span>
-          )}
-          {event.agent_id && (
-            <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700 text-gray-500 truncate max-w-[120px]">
-              {event.agent_id}
-            </span>
-          )}
-        </div>
-        {event.task && (
-          <p className="text-xs text-gray-500 mt-0.5 truncate">
-            Task: {event.task.title || event.task.name}
-          </p>
-        )}
-        {event.project && (
-          <p className="text-xs text-gray-600 mt-0.5 truncate">
-            Project: {event.project.name}
-          </p>
-        )}
+      <div className="relative">
+        <select
+          value={projectFilter}
+          onChange={e => setProjectFilter(e.target.value)}
+          className="appearance-none bg-gray-800 border border-gray-700 text-white text-sm rounded px-3 py-1.5 pr-7 focus:outline-none focus:border-orange-500 cursor-pointer"
+        >
+          <option value="all">All Projects</option>
+          {(projects || []).map(p => (
+            <option key={p.id} value={String(p.id)}>{p.name}</option>
+          ))}
+        </select>
+        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
       </div>
-
-      {/* Time */}
-      <span className="text-xs text-gray-500 shrink-0 mt-0.5 font-mono">
-        {formatTime(event.starts_at)}
-      </span>
     </div>
   );
 }
 
 // ── Events tab ───────────────────────────────────────────────────────────────
-function EventsTab() {
+function EventsTab({ projectFilter = "all", setProjectFilter, projects = [] }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -233,9 +198,15 @@ function EventsTab() {
     return d;
   }, [today]);
 
+  const queryParams = useMemo(() => {
+    const p = { start_date: toISODate(today), end_date: toISODate(endDate) };
+    if (projectFilter !== "all") p.project_id = projectFilter;
+    return p;
+  }, [today, endDate, projectFilter]);
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["calendar", "events", { start_date: toISODate(today), end_date: toISODate(endDate) }],
-    queryFn: () => calendarApi.getEvents({ start_date: toISODate(today), end_date: toISODate(endDate) }),
+    queryKey: ["calendar", "events", queryParams],
+    queryFn: () => calendarApi.getEvents(queryParams),
   });
 
   const events = useMemo(() => {
@@ -272,6 +243,9 @@ function EventsTab() {
         setStatusFilter={setStatusFilter}
         sourceFilter={sourceFilter}
         setSourceFilter={setSourceFilter}
+        projectFilter={projectFilter}
+        setProjectFilter={setProjectFilter}
+        projects={projects}
       />
 
       {isLoading ? (
@@ -293,7 +267,7 @@ function EventsTab() {
               </h3>
               <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/60">
                 {evts.map((evt, i) => (
-                  <EventRow key={evt.id || i} event={evt} onClick={() => setSelectedEvent(evt)} />
+                  <EventRow key={evt.id || i} event={evt} onClick={() => setSelectedEvent(evt)} showProject />
                 ))}
               </div>
             </div>
@@ -420,11 +394,18 @@ function CronJobRow({ job, onSelect }) {
 }
 
 // ── Cron jobs tab ────────────────────────────────────────────────────────────
-function CronJobsTab() {
+function CronJobsTab({ projectFilter = "all" }) {
   const [selectedJob, setSelectedJob] = useState(null);
+
+  const cronParams = useMemo(() => {
+    const p = {};
+    if (projectFilter !== "all") p.project_id = projectFilter;
+    return p;
+  }, [projectFilter]);
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["calendar", "cronJobs"],
-    queryFn: cronJobsApi.getAll,
+    queryKey: ["calendar", "cronJobs", cronParams],
+    queryFn: () => cronJobsApi.getAll(cronParams),
   });
 
   const jobs = useMemo(() => {
@@ -478,11 +459,21 @@ function CronJobsTab() {
 // ── Main page ────────────────────────────────────────────────────────────────
 function CalendarInner() {
   const [tab, setTab] = useState("events");
+  const [projectFilter, setProjectFilter] = useState("all");
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ["calendar", "summary"],
     queryFn: calendarApi.getSummary,
   });
+
+  const { data: projectsData } = useQuery({
+    queryKey: ["projects"],
+    queryFn: projectsApi.getAll,
+  });
+  const projects = useMemo(() => {
+    if (!projectsData) return [];
+    return Array.isArray(projectsData) ? projectsData : projectsData.projects || [];
+  }, [projectsData]);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -513,7 +504,10 @@ function CalendarInner() {
 
       <div className="px-6 py-6">
         <SummaryStrip summary={summary} isLoading={loadingSummary} />
-        {tab === "events" ? <EventsTab /> : <CronJobsTab />}
+        {tab === "events"
+          ? <EventsTab projectFilter={projectFilter} setProjectFilter={setProjectFilter} projects={projects} />
+          : <CronJobsTab projectFilter={projectFilter} />
+        }
       </div>
     </div>
   );

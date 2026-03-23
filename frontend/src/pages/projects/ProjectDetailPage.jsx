@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ArrowLeft,
   CheckCircle,
@@ -14,13 +14,20 @@ import {
   FolderKanban,
   Circle,
   AlertCircle,
+  CalendarClock,
+  RefreshCw,
 } from "lucide-react";
 import { projectsApi } from "../../api/projects";
 import { tasksApi } from "../../api/tasks";
 import { documentsApi } from "../../api/documents";
 import { memoriesApi } from "../../api/memories";
+import { calendarApi } from "../../api/calendar";
+import { cronJobsApi } from "../../api/cronJobs";
 import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
+import EventRow from "../../components/calendar/EventRow";
+import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
+import CronJobDetail from "../../components/calendar/CronJobDetail";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -52,6 +59,7 @@ const COLOR_SWATCHES = [
 
 const TABS = [
   { id: "tasks",     label: "Tasks",     icon: FolderKanban },
+  { id: "schedule",  label: "Schedule",  icon: CalendarClock },
   { id: "activity",  label: "Activity",  icon: Activity },
   { id: "documents", label: "Documents", icon: FileText },
   { id: "memory",    label: "Memory",    icon: Brain },
@@ -252,6 +260,7 @@ export default function ProjectDetailPage() {
 
       {/* Tab content */}
       {activeTab === "tasks" && <TasksTab projectId={id} />}
+      {activeTab === "schedule" && <ScheduleTab projectId={id} />}
       {activeTab === "activity" && <ActivityTab projectId={id} />}
       {activeTab === "documents" && <DocumentsTab projectId={id} />}
       {activeTab === "memory" && <MemoryTab projectId={id} />}
@@ -584,6 +593,193 @@ function AddTaskForm({ projectId, onSave, onCancel, saving }) {
         </button>
       </div>
     </form>
+  );
+}
+
+// ── Schedule Tab ─────────────────────────────────────────────────────────────
+
+function ScheduleTab({ projectId }) {
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
+
+  const today = useMemo(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  }, []);
+
+  const thirtyDaysFromNow = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split("T")[0];
+  }, []);
+
+  const thirtyDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split("T")[0];
+  }, []);
+
+  // Upcoming scheduled events
+  const { data: upcomingData, isLoading: loadingUpcoming, isError: errorUpcoming } = useQuery({
+    queryKey: ["calendar", "events", { project_id: projectId, start_date: today, end_date: thirtyDaysFromNow, status: "scheduled" }],
+    queryFn: () => calendarApi.getEvents({ project_id: projectId, start_date: today, end_date: thirtyDaysFromNow, status: "scheduled" }),
+  });
+
+  // Recurring cron jobs
+  const { data: cronData, isLoading: loadingCron, isError: errorCron } = useQuery({
+    queryKey: ["calendar", "cronJobs", { project_id: projectId }],
+    queryFn: () => cronJobsApi.getAll({ project_id: projectId }),
+  });
+
+  // Failed events (last 30 days)
+  const { data: failedData, isLoading: loadingFailed } = useQuery({
+    queryKey: ["calendar", "events", { project_id: projectId, start_date: thirtyDaysAgo, end_date: today, status: "failed" }],
+    queryFn: () => calendarApi.getEvents({ project_id: projectId, start_date: thirtyDaysAgo, end_date: today, status: "failed" }),
+  });
+
+  // Missed events (last 30 days)
+  const { data: missedData, isLoading: loadingMissed } = useQuery({
+    queryKey: ["calendar", "events", { project_id: projectId, start_date: thirtyDaysAgo, end_date: today, status: "missed" }],
+    queryFn: () => calendarApi.getEvents({ project_id: projectId, start_date: thirtyDaysAgo, end_date: today, status: "missed" }),
+  });
+
+  const upcomingEvents = useMemo(() => {
+    const list = upcomingData?.events || upcomingData || [];
+    return Array.isArray(list) ? list : [];
+  }, [upcomingData]);
+
+  const cronJobs = useMemo(() => {
+    if (!cronData) return [];
+    return Array.isArray(cronData) ? cronData : cronData.cron_jobs || [];
+  }, [cronData]);
+
+  const failureEvents = useMemo(() => {
+    const failed = failedData?.events || failedData || [];
+    const missed = missedData?.events || missedData || [];
+    const f = Array.isArray(failed) ? failed : [];
+    const m = Array.isArray(missed) ? missed : [];
+    return [...f, ...m].sort((a, b) => new Date(b.starts_at) - new Date(a.starts_at));
+  }, [failedData, missedData]);
+
+  const isLoading = loadingUpcoming || loadingCron || loadingFailed || loadingMissed;
+
+  if (isLoading) {
+    return <div className="text-gray-400 text-sm">Loading schedule...</div>;
+  }
+
+  if (errorUpcoming || errorCron) {
+    return (
+      <div className="flex items-center gap-2 text-red-400 text-sm">
+        <AlertCircle size={14} />
+        Failed to load schedule data.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* A. Upcoming scheduled events */}
+      <section>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <CalendarClock size={14} className="text-blue-400" />
+          Upcoming Scheduled Events
+        </h3>
+        {upcomingEvents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+            <CalendarClock size={32} className="mb-2 text-gray-600" />
+            <p className="text-sm text-gray-400">No upcoming scheduled work for this project</p>
+          </div>
+        ) : (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/60">
+            {upcomingEvents.map((evt, i) => (
+              <EventRow key={evt.id || i} event={evt} onClick={() => setSelectedEvent(evt)} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* B. Recurring cron jobs */}
+      <section>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <RefreshCw size={14} className="text-green-400" />
+          Recurring Jobs
+        </h3>
+        {cronJobs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+            <RefreshCw size={32} className="mb-2 text-gray-600" />
+            <p className="text-sm text-gray-400">No recurring jobs for this project</p>
+          </div>
+        ) : (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/60">
+            {cronJobs.map(job => (
+              <div
+                key={job.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-gray-800/60 transition-colors cursor-pointer"
+                onClick={() => setSelectedJob(job)}
+              >
+                <span className={cn("w-2 h-2 rounded-full shrink-0", job.enabled ? "bg-green-500" : "bg-gray-500")} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn("text-sm font-medium truncate", job.enabled ? "text-white" : "text-gray-500")}>
+                      {job.name}
+                    </span>
+                    <code className="text-xs text-gray-500 font-mono">{job.cron_expression}</code>
+                    <span className={cn(
+                      "text-xs px-1.5 py-0.5 rounded border",
+                      job.enabled
+                        ? "bg-green-500/10 border-green-500/20 text-green-400"
+                        : "bg-gray-500/10 border-gray-500/20 text-gray-400"
+                    )}>
+                      {job.enabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs text-gray-500">Next run</p>
+                  <p className="text-xs text-gray-300 font-mono">
+                    {job.next_run_at
+                      ? new Date(job.next_run_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                      : "\u2014"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* C. Recent failures / misses */}
+      <section>
+        <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+          <AlertCircle size={14} className="text-red-400" />
+          Recent Failures & Misses (Last 30 Days)
+        </h3>
+        {failureEvents.length === 0 ? (
+          <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3">
+            <CheckCircle size={14} className="text-green-400 shrink-0" />
+            <p className="text-sm text-green-400">No failures or missed events in the last 30 days</p>
+          </div>
+        ) : (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/60">
+            {failureEvents.map((evt, i) => (
+              <EventRow key={evt.id || i} event={evt} onClick={() => setSelectedEvent(evt)} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Detail panels */}
+      <CalendarEventDetail
+        event={selectedEvent}
+        open={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
+      <CronJobDetail
+        job={selectedJob}
+        open={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+      />
+    </div>
   );
 }
 
