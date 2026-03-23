@@ -58,7 +58,7 @@ module Api
       private
 
       def set_task
-        @task = Task.find(params[:task_id])
+        @task = Task.find(params[:id] || params[:task_id])
       end
 
       def generate_questions
