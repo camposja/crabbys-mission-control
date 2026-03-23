@@ -13,6 +13,7 @@ import ErrorBoundary from "../../components/ui/ErrorBoundary";
 import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
 import CronJobDetail from "../../components/calendar/CronJobDetail";
 import EventRow from "../../components/calendar/EventRow";
+import { useCalendarChannel } from "../../hooks/useCalendarChannel";
 
 // ── Status config ────────────────────────────────────────────────────────────
 const EVENT_STATUS = {
@@ -458,6 +459,7 @@ function CronJobsTab({ projectFilter = "all" }) {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 function CalendarInner() {
+  const { connected } = useCalendarChannel();
   const [tab, setTab] = useState("events");
   const [projectFilter, setProjectFilter] = useState("all");
 
@@ -479,7 +481,20 @@ function CalendarInner() {
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b border-gray-800">
-        <h1 className="text-2xl font-bold text-white mb-3">Calendar</h1>
+        <div className="flex items-center gap-3 mb-3">
+          <h1 className="text-2xl font-bold text-white">Calendar</h1>
+          <span
+            className={cn(
+              "flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border",
+              connected
+                ? "bg-green-500/10 border-green-500/20 text-green-400"
+                : "bg-gray-500/10 border-gray-500/20 text-gray-500"
+            )}
+          >
+            <span className={cn("inline-block w-1.5 h-1.5 rounded-full", connected ? "bg-green-500" : "bg-gray-500")} />
+            {connected ? "Live" : "Offline"}
+          </span>
+        </div>
         <div className="flex gap-1 bg-gray-800 p-1 rounded-lg w-fit">
           <button
             onClick={() => setTab("events")}

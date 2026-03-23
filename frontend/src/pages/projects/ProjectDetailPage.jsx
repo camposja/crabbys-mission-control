@@ -24,6 +24,7 @@ import { memoriesApi } from "../../api/memories";
 import { calendarApi } from "../../api/calendar";
 import { cronJobsApi } from "../../api/cronJobs";
 import { useChannel } from "../../hooks/useChannel";
+import { useCalendarChannel } from "../../hooks/useCalendarChannel";
 import { cn } from "../../lib/utils";
 import EventRow from "../../components/calendar/EventRow";
 import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
@@ -115,6 +116,9 @@ export default function ProjectDetailPage() {
     queryFn: () => projectsApi.getSummary(id),
     enabled: !!project,
   });
+
+  // Subscribe to calendar channel to keep Schedule tab fresh
+  useCalendarChannel();
 
   // Subscribe to project-scoped updates channel to keep task list, summary, and activity fresh
   useChannel(

@@ -15,6 +15,16 @@ class CalendarSyncJob < ApplicationJob
       metadata: result.except(:errors).merge(error_count: result[:errors].size)
     )
 
+    ActionCable.server.broadcast("calendar_reminders", {
+      event: "calendar_sync_completed",
+      result: {
+        synced_cron_jobs: result[:synced_cron_jobs],
+        synced_events: result[:synced_events],
+        gateway_available: result[:gateway_available],
+        synced_at: result[:synced_at]
+      }
+    })
+
     # Sweep for overdue events and verify execution
     sweep_overdue_events
 
