@@ -43,6 +43,7 @@ class CalendarSyncJob < ApplicationJob
   def sweep_overdue_events
     overdue = CalendarEvent.where(status: "scheduled")
                            .where("starts_at < ?", 1.hour.ago)
+                           .includes(:task)
 
     overdue.find_each do |event|
       result = Calendar::ExecutionVerifier.new(event).call

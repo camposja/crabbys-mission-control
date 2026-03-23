@@ -147,6 +147,21 @@ RSpec.describe Calendar::ExecutionVerifier do
       end
     end
 
+    context "when event has a task_id but the task record was deleted" do
+      let(:task) { create(:task) }
+      let(:event) { create(:calendar_event, :past, :with_task, task: task, status: "scheduled") }
+
+      before { task.destroy! }
+
+      it "does not crash and falls through to fallback logic" do
+        result = described_class.new(event.reload).call
+
+        expect(result[:task]).to be_nil
+        expect(result[:verified]).to be false
+        expect(result[:suggested_status]).to eq("missed")
+      end
+    end
+
     context "when event is already in a terminal state" do
       let(:task) { create(:task, :done, agent_status: "completed") }
       let(:event) { create(:calendar_event, :completed, :with_task, task: task, starts_at: 2.hours.ago) }

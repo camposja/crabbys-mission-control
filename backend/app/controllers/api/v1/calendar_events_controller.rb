@@ -3,6 +3,9 @@ module Api
     class CalendarEventsController < BaseController
       before_action :set_event, only: [:show, :update, :destroy]
 
+      # NOTE: This returns raw AR JSON (no nested task/project).
+      # CalendarController#events returns a richer serialized shape with nested associations.
+      # The frontend CalendarPage uses CalendarController; this endpoint is for programmatic/CRUD use.
       def index
         events = if params[:from] && params[:to]
           CalendarEvent.for_range(params[:from], params[:to])

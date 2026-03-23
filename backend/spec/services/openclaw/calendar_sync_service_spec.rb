@@ -184,6 +184,42 @@ RSpec.describe Openclaw::CalendarSyncService do
   end
 
   # ---------------------------------------------------------------------------
+  # Context: gateway returns partial data (some fields missing)
+  # ---------------------------------------------------------------------------
+  context "when gateway returns jobs with missing optional fields" do
+    let(:partial_jobs) do
+      [
+        {
+          "id"   => "gw-partial-1",
+          "name" => nil,
+          "cron_expression" => nil,
+          "command" => nil,
+          "enabled" => true,
+          "status" => nil,
+          "last_run_at" => nil,
+          "next_run_at" => 1.day.from_now.iso8601
+        }
+      ]
+    end
+
+    before do
+      allow(gateway).to receive(:rpc)
+        .with("schedule.list")
+        .and_return({ "jobs" => partial_jobs })
+    end
+
+    it "fills in defaults for missing fields and does not raise" do
+      expect { service.call }.to change(CronJob, :count).by(1)
+
+      cj = CronJob.find_by(gateway_reference: "gw-partial-1")
+      expect(cj.name).to eq("Gateway job gw-partial-1")
+      expect(cj.cron_expression).to eq("* * * * *")
+      expect(cj.command).to eq("gateway-managed")
+      expect(cj.status).to eq("idle")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Idempotency
   # ---------------------------------------------------------------------------
   context "idempotency — calling twice with same gateway data" do
