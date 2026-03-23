@@ -21,7 +21,7 @@ function statusColor(status) {
 function agentInitials(agent) {
   const name = agent.name || agent.id || "?";
   if (name.toLowerCase() === "crabby") return "🦀";
-  if (name.toLowerCase() === "jose" || name.toLowerCase() === "main") return "J";
+  if (name.toLowerCase() === "jose" || name.toLowerCase() === "main") return "🧑🏽‍💻";
   return name.slice(0, 2).toUpperCase();
 }
 
@@ -140,7 +140,7 @@ function PixelAvatar({ agent, x, y }) {
         fill={isCrabby ? "#ea580c" : isJose ? "#3b82f6" : "#6b7280"}
         stroke="#111827" strokeWidth="2"
       />
-      <text x="32" y="23" textAnchor="middle" fill="white" fontSize={isCrabby ? "14" : "10"} fontWeight="bold">
+      <text x="32" y="23" textAnchor="middle" fill="white" fontSize={(isCrabby || isJose) ? "14" : "10"} fontWeight="bold">
         {initials}
       </text>
 

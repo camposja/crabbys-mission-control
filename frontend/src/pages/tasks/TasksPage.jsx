@@ -31,8 +31,8 @@ const AGENT_STATUS_COLORS = {
 };
 
 const ASSIGNEES = [
-  { id: "jose",   label: "Jose",   letter: "J", color: "bg-blue-600"   },
-  { id: "crabby", label: "Crabby", letter: "C", color: "bg-orange-500" },
+  { id: "jose",   label: "Jose",   letter: "🧑🏽‍💻", color: "bg-gray-800"   },
+  { id: "crabby", label: "Crabby", letter: "🦀",      color: "bg-gray-800" },
 ];
 
 function getAssignee(id) {
@@ -396,9 +396,9 @@ function TaskCard({ task, isDragging, onPlan, project }) {
         {assignee && (
           <div className="ml-auto relative group/avatar">
             <div className={cn(
-              "w-5 h-5 rounded-full flex items-center justify-center text-white font-bold cursor-default",
+              "w-5 h-5 rounded-full flex items-center justify-center cursor-default",
               assignee.color
-            )} style={{ fontSize: "9px" }}>
+            )} style={{ fontSize: "12px", lineHeight: 1 }}>
               {assignee.letter}
             </div>
             <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
