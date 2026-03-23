@@ -4,7 +4,9 @@ module Api
       before_action :set_cron_job, only: [:show, :update, :destroy, :toggle, :run_now]
 
       def index
-        render json: CronJob.all.order(:name)
+        scope = CronJob.all
+        scope = scope.where(project_id: params[:project_id]) if params[:project_id].present?
+        render json: scope.order(:name)
       end
 
       def show
