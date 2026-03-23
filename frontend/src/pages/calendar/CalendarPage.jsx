@@ -9,6 +9,8 @@ import { calendarApi } from "../../api/calendar";
 import { cronJobsApi } from "../../api/cronJobs";
 import { cn } from "../../lib/utils";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
+import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
+import CronJobDetail from "../../components/calendar/CronJobDetail";
 
 // ── Status config ────────────────────────────────────────────────────────────
 const EVENT_STATUS = {
@@ -169,11 +171,14 @@ function FilterBar({ statusFilter, setStatusFilter, sourceFilter, setSourceFilte
 }
 
 // ── Event row ────────────────────────────────────────────────────────────────
-function EventRow({ event }) {
+function EventRow({ event, onClick }) {
   const status = EVENT_STATUS[event.status] || EVENT_STATUS.scheduled;
 
   return (
-    <div className="flex items-start gap-3 px-4 py-3 hover:bg-gray-800/40 transition-colors rounded-lg">
+    <div
+      className="flex items-start gap-3 px-4 py-3 hover:bg-gray-800/60 transition-colors rounded-lg cursor-pointer"
+      onClick={onClick}
+    >
       {/* Status dot */}
       <span className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", status.dot)} />
 
@@ -219,6 +224,7 @@ function EventRow({ event }) {
 function EventsTab() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const today = useMemo(() => new Date(), []);
   const endDate = useMemo(() => {
@@ -287,19 +293,25 @@ function EventsTab() {
               </h3>
               <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800/60">
                 {evts.map((evt, i) => (
-                  <EventRow key={evt.id || i} event={evt} />
+                  <EventRow key={evt.id || i} event={evt} onClick={() => setSelectedEvent(evt)} />
                 ))}
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <CalendarEventDetail
+        event={selectedEvent}
+        open={!!selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
     </div>
   );
 }
 
 // ── Cron job row ─────────────────────────────────────────────────────────────
-function CronJobRow({ job }) {
+function CronJobRow({ job, onSelect }) {
   const qc = useQueryClient();
 
   const toggleMutation = useMutation({
@@ -335,10 +347,10 @@ function CronJobRow({ job }) {
   const ToggleIcon = job.enabled ? ToggleRight : ToggleLeft;
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3">
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-gray-800/60 transition-colors cursor-pointer" onClick={onSelect}>
       {/* Toggle */}
       <button
-        onClick={() => toggleMutation.mutate()}
+        onClick={(e) => { e.stopPropagation(); toggleMutation.mutate(); }}
         disabled={toggleMutation.isPending}
         className={cn(
           "shrink-0 transition-colors",
@@ -382,7 +394,7 @@ function CronJobRow({ job }) {
 
       {/* Run now */}
       <button
-        onClick={() => runNowMutation.mutate()}
+        onClick={(e) => { e.stopPropagation(); runNowMutation.mutate(); }}
         disabled={runNowMutation.isPending}
         className="flex items-center gap-1.5 text-xs bg-orange-500/20 hover:bg-orange-500/30 disabled:opacity-50 text-orange-400 px-2.5 py-1.5 rounded transition-colors shrink-0"
       >
@@ -409,6 +421,7 @@ function CronJobRow({ job }) {
 
 // ── Cron jobs tab ────────────────────────────────────────────────────────────
 function CronJobsTab() {
+  const [selectedJob, setSelectedJob] = useState(null);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["calendar", "cronJobs"],
     queryFn: cronJobsApi.getAll,
@@ -447,11 +460,18 @@ function CronJobsTab() {
   }
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800">
-      {jobs.map(job => (
-        <CronJobRow key={job.id} job={job} />
-      ))}
-    </div>
+    <>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800">
+        {jobs.map(job => (
+          <CronJobRow key={job.id} job={job} onSelect={() => setSelectedJob(job)} />
+        ))}
+      </div>
+      <CronJobDetail
+        job={selectedJob}
+        open={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+      />
+    </>
   );
 }
 
