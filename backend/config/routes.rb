@@ -132,6 +132,14 @@ Rails.application.routes.draw do
       # Gateway health
       get "gateway", to: "gateway#show"
 
+      # Calendar dashboard (combined view)
+      scope "calendar" do
+        get  "/",          to: "calendar#index",     as: :calendar
+        get  "events",     to: "calendar#events",    as: :calendar_events_range
+        get  "cron_jobs",  to: "calendar#cron_jobs",  as: :calendar_cron_jobs
+        get  "summary",    to: "calendar#summary",   as: :calendar_summary
+      end
+
       # Upcoming calendar events (dashboard widget)
       get "calendar/upcoming", to: "calendar_upcoming#index"
 
