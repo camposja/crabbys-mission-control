@@ -10,34 +10,58 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_22_024501) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "calendar_events", force: :cascade do |t|
+    t.string "agent_id"
     t.datetime "created_at", null: false
+    t.bigint "cron_job_id"
     t.text "description"
     t.datetime "ends_at"
     t.string "event_type"
+    t.string "gateway_reference"
+    t.datetime "last_run_at"
     t.jsonb "metadata"
+    t.datetime "next_run_at"
+    t.bigint "project_id"
     t.string "recurrence"
+    t.string "source", default: "manual", null: false
     t.datetime "starts_at"
+    t.string "status", default: "scheduled", null: false
+    t.bigint "task_id"
     t.string "title"
     t.datetime "updated_at", null: false
+    t.index ["agent_id"], name: "index_calendar_events_on_agent_id"
+    t.index ["cron_job_id"], name: "index_calendar_events_on_cron_job_id"
+    t.index ["next_run_at"], name: "index_calendar_events_on_next_run_at"
+    t.index ["project_id"], name: "index_calendar_events_on_project_id"
+    t.index ["status"], name: "index_calendar_events_on_status"
+    t.index ["task_id"], name: "index_calendar_events_on_task_id"
   end
 
   create_table "cron_jobs", force: :cascade do |t|
+    t.string "agent_id"
     t.string "command", null: false
     t.datetime "created_at", null: false
+    t.string "cron_expression", null: false
     t.boolean "enabled", default: true
+    t.integer "failure_count", default: 0, null: false
+    t.string "gateway_reference"
+    t.text "last_error"
     t.text "last_output"
     t.datetime "last_run_at"
     t.string "name", null: false
     t.datetime "next_run_at"
-    t.string "schedule", null: false
+    t.bigint "project_id"
     t.string "status", default: "idle"
+    t.bigint "task_id"
     t.datetime "updated_at", null: false
+    t.index ["agent_id"], name: "index_cron_jobs_on_agent_id"
     t.index ["enabled"], name: "index_cron_jobs_on_enabled"
+    t.index ["project_id"], name: "index_cron_jobs_on_project_id"
+    t.index ["task_id"], name: "index_cron_jobs_on_task_id"
   end
 
   create_table "documents", force: :cascade do |t|
@@ -262,6 +286,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_024501) do
     t.index ["recorded_at"], name: "index_usage_records_on_recorded_at"
   end
 
+  add_foreign_key "calendar_events", "cron_jobs", on_delete: :nullify
+  add_foreign_key "calendar_events", "projects", on_delete: :nullify
+  add_foreign_key "calendar_events", "tasks", on_delete: :nullify
+  add_foreign_key "cron_jobs", "projects", on_delete: :nullify
+  add_foreign_key "cron_jobs", "tasks", on_delete: :nullify
   add_foreign_key "memories", "projects", on_delete: :nullify
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
