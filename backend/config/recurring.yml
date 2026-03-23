@@ -19,6 +19,11 @@ development:
     queue: default
     schedule: every 5 minutes
 
+  calendar_sync:
+    class: CalendarSyncJob
+    queue: default
+    schedule: every 5 minutes
+
   usage_spike_checker:
     class: UsageSpikeCheckerJob
     queue: default
@@ -39,6 +44,11 @@ production:
     class: SystemMetricsJob
     queue: default
     schedule: every 30 seconds
+
+  calendar_sync:
+    class: CalendarSyncJob
+    queue: default
+    schedule: every 5 minutes
 
   usage_spike_checker:
     class: UsageSpikeCheckerJob
