@@ -11,6 +11,7 @@ class OpsNote < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :notes_format, inclusion: { in: FORMATS }
   validate  :validate_source_links_shape
+  validate  :require_core_fields
 
   scope :recent,      -> { order(Arel.sql("pinned DESC, last_used_at DESC NULLS LAST, updated_at DESC")) }
   scope :pinned_only, -> { where(pinned: true) }
@@ -53,9 +54,16 @@ class OpsNote < ApplicationRecord
       end
 
       data = link.stringify_keys
-      if data["label"].blank? || data["url"].blank? || data["source_type"].blank?
-        errors.add(:source_links, "entries must include label, url, and source_type")
+      next if data.values.all?(&:blank?)
+
+      if data["url"].present? && data["url"] !~ URI::DEFAULT_PARSER.make_regexp(%w[http https])
+        errors.add(:source_links, "urls must be valid http/https links")
       end
     end
+  end
+
+  def require_core_fields
+    errors.add(:category, "can't be blank") if category.blank?
+    errors.add(:command_snippet, "can't be blank") if command_snippet.blank?
   end
 end

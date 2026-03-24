@@ -23,7 +23,7 @@ const nav = [
   { to: "/usage",     icon: BarChart2,        label: "Usage"       },
   { to: "/security",  icon: Shield,           label: "Security"    },
   { to: "/feedback",  icon: MessageSquarePlus,label: "Feedback"    },
-  { to: "/ops-notes", icon: BookKey,          label: "Ops Notes"   },
+  { to: "/ops-notes", icon: BookKey,          label: "Claw Cheatsheet" },
   { to: "/settings",  icon: Settings,         label: "Settings"    },
 ];
 
