@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookKey, Plus, Pin, Search, Trash2, ExternalLink, Save, X } from "lucide-react";
 import { opsNotesApi } from "../../api/opsNotes";
@@ -35,12 +36,12 @@ export default function OpsNotesPage() {
     <div className="p-6 h-screen flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Openclaw Commands</h1>
+          <h1 className="text-2xl font-bold text-white">Openclaw Commands Cheatsheet</h1>
           <p className="text-sm text-gray-400 mt-0.5">Ops Cheatsheet</p>
         </div>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="flex items-center gap-1.5 text-sm bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg transition-colors"
         >
           {showForm ? <X size={14} /> : <Plus size={14} />}
           {showForm ? "Close" : "New Note"}
@@ -178,8 +179,14 @@ function OpsNoteDetail({ note, onDelete }) {
 
           <div>
             <p className="text-[11px] uppercase tracking-widest text-gray-500 font-medium mb-2">Explanation</p>
-            <div className="bg-gray-950 border border-gray-800 rounded-xl px-4 py-4 whitespace-pre-wrap text-sm text-gray-200 leading-relaxed min-h-[140px]">
-              {note.body || "No explanation yet."}
+            <div className="bg-gray-950 border border-gray-800 rounded-xl px-4 py-4 text-sm text-gray-200 leading-relaxed min-h-[140px]">
+              {note.body ? (
+                <div className="prose prose-invert prose-sm max-w-none prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-800 prose-code:text-orange-300">
+                  <ReactMarkdown>{note.body}</ReactMarkdown>
+                </div>
+              ) : (
+                "No explanation yet."
+              )}
             </div>
           </div>
 
@@ -230,8 +237,8 @@ function OpsNoteForm({ note, onSaved }) {
     mutationFn: () => {
       const payload = {
         title: form.title,
-        category: form.category || null,
-        command_snippet: form.command_snippet || null,
+        category: form.category,
+        command_snippet: form.command_snippet,
         body: form.body || null,
         tags: form.tagsText.split(",").map(t => t.trim()).filter(Boolean),
         pinned: form.pinned,
@@ -256,9 +263,9 @@ function OpsNoteForm({ note, onSaved }) {
       {error && <div className="bg-red-950/50 border border-red-800 rounded-lg px-4 py-2 text-sm text-red-400">{error}</div>}
       <div className="grid grid-cols-2 gap-3">
         <input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Title" className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none" required />
-        <input value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Category (gateway, auth, update...)" className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none" />
+        <input value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Category (gateway, auth, update...)" className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none" required />
       </div>
-      <textarea value={form.command_snippet} onChange={(e) => setForm(f => ({ ...f, command_snippet: e.target.value }))} placeholder="Main command" rows={3} className="w-full bg-gray-950 border border-gray-700 text-white rounded-xl px-4 py-3 outline-none text-lg font-bold" />
+      <textarea value={form.command_snippet} onChange={(e) => setForm(f => ({ ...f, command_snippet: e.target.value }))} placeholder="Main command" rows={3} className="w-full bg-gray-950 border border-gray-700 text-white rounded-xl px-4 py-3 outline-none text-lg font-bold" required />
       <textarea value={form.body} onChange={(e) => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Explanation / troubleshooting notes / steps that worked before" rows={8} className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 outline-none" />
       <input value={form.tagsText} onChange={(e) => setForm(f => ({ ...f, tagsText: e.target.value }))} placeholder="Tags separated by commas" className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 outline-none" />
       <div className="grid grid-cols-3 gap-3">
@@ -283,7 +290,7 @@ function OpsNoteForm({ note, onSaved }) {
       </div>
 
       <div className="flex justify-end">
-        <button type="submit" className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm px-4 py-2 rounded-lg" disabled={mutation.isPending}>
+        <button type="submit" className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-2 rounded-lg" disabled={mutation.isPending}>
           <Save size={14} /> {mutation.isPending ? "Saving..." : "Save note"}
         </button>
       </div>
