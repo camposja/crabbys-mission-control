@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
   Bot, CalendarDays, BarChart2, Settings,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
-  WifiOff, Wifi, Loader,
+  WifiOff, Wifi, Loader, BookKey,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { dashboardApi } from "../../api/dashboard";
@@ -23,6 +23,7 @@ const nav = [
   { to: "/usage",     icon: BarChart2,        label: "Usage"       },
   { to: "/security",  icon: Shield,           label: "Security"    },
   { to: "/feedback",  icon: MessageSquarePlus,label: "Feedback"    },
+  { to: "/ops-notes", icon: BookKey,          label: "Ops Notes"   },
   { to: "/settings",  icon: Settings,         label: "Settings"    },
 ];
 

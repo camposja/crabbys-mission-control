@@ -129,6 +129,9 @@ Rails.application.routes.draw do
         end
       end
 
+      # Ops notes / command cheatsheet
+      resources :ops_notes
+
       # Gateway health
       get "gateway", to: "gateway#show"
 
