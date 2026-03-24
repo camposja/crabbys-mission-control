@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, Clock, RefreshCw, Play, ToggleLeft, ToggleRight,
   AlertTriangle, CheckCircle, XCircle, ChevronDown,
-  Loader2, CalendarClock, Timer, Ban,
+  Loader2, CalendarClock, Timer, Ban, CalendarDays, Sun,
 } from "lucide-react";
 import { calendarApi } from "../../api/calendar";
 import { cronJobsApi } from "../../api/cronJobs";
@@ -13,6 +13,8 @@ import ErrorBoundary from "../../components/ui/ErrorBoundary";
 import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
 import CronJobDetail from "../../components/calendar/CronJobDetail";
 import EventRow from "../../components/calendar/EventRow";
+import WeekCalendarView from "../../components/calendar/WeekCalendarView";
+import TodayCalendarView from "../../components/calendar/TodayCalendarView";
 import { useCalendarChannel } from "../../hooks/useCalendarChannel";
 
 // ── Status config ────────────────────────────────────────────────────────────
@@ -457,11 +459,24 @@ function CronJobsTab({ projectFilter = "all" }) {
   );
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function getSundayOfCurrentWeek() {
+  const now = new Date();
+  const day = now.getDay();
+  const sunday = new Date(now);
+  sunday.setDate(sunday.getDate() - day);
+  const y = sunday.getFullYear();
+  const m = String(sunday.getMonth() + 1).padStart(2, "0");
+  const d = String(sunday.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 function CalendarInner() {
   const { connected } = useCalendarChannel();
   const [tab, setTab] = useState("events");
   const [projectFilter, setProjectFilter] = useState("all");
+  const [weekStart, setWeekStart] = useState(getSundayOfCurrentWeek);
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ["calendar", "summary"],
@@ -497,6 +512,24 @@ function CalendarInner() {
         </div>
         <div className="flex gap-1 bg-gray-800 p-1 rounded-lg w-fit">
           <button
+            onClick={() => setTab("today")}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-colors",
+              tab === "today" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-white"
+            )}
+          >
+            <Sun size={12} /> Today
+          </button>
+          <button
+            onClick={() => setTab("week")}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-colors",
+              tab === "week" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-white"
+            )}
+          >
+            <CalendarDays size={12} /> Week
+          </button>
+          <button
             onClick={() => setTab("events")}
             className={cn(
               "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-colors",
@@ -519,10 +552,18 @@ function CalendarInner() {
 
       <div className="px-6 py-6">
         <SummaryStrip summary={summary} isLoading={loadingSummary} />
-        {tab === "events"
-          ? <EventsTab projectFilter={projectFilter} setProjectFilter={setProjectFilter} projects={projects} />
-          : <CronJobsTab projectFilter={projectFilter} />
-        }
+        {tab === "events" && (
+          <EventsTab projectFilter={projectFilter} setProjectFilter={setProjectFilter} projects={projects} />
+        )}
+        {tab === "cron" && (
+          <CronJobsTab projectFilter={projectFilter} />
+        )}
+        {tab === "week" && (
+          <WeekCalendarView weekStart={weekStart} onWeekChange={setWeekStart} />
+        )}
+        {tab === "today" && (
+          <TodayCalendarView />
+        )}
       </div>
     </div>
   );

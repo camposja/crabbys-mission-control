@@ -7,6 +7,8 @@ export const calendarApi = {
   getCronJobs:      ()           => client.get("/calendar/cron_jobs").then(r => r.data),
   getSummary:       ()           => client.get("/calendar/summary").then(r => r.data),
   getEventHistory:  (id)         => client.get(`/calendar/events/${id}/history`).then(r => r.data),
+  getToday:         ()           => client.get("/calendar/today").then(r => r.data),
+  getWeek:          (weekStart)  => client.get("/calendar/week", { params: weekStart ? { week_start: weekStart } : {} }).then(r => r.data),
 
   // CalendarEvents CRUD
   createEvent:      (data)       => client.post("/calendar_events", { calendar_event: data }).then(r => r.data),
