@@ -41,6 +41,36 @@ module Api
         render json: build_summary
       end
 
+      # GET /api/v1/calendar/today
+      def today
+        date = Date.current
+        events = CalendarEvent
+          .where("DATE(starts_at) = ?", date)
+          .order(:starts_at)
+          .includes(:task, :project)
+        render json: {
+          date: date.iso8601,
+          events: events.map { |e| serialize_event(e) },
+          cron_occurrences: cron_occurrences_for_range(date.beginning_of_day, date.end_of_day)
+        }
+      end
+
+      # GET /api/v1/calendar/week
+      def week
+        week_start = params[:week_start].present? ? Date.parse(params[:week_start]).beginning_of_week(:sunday) : Date.current.beginning_of_week(:sunday)
+        week_end   = week_start + 6.days
+        events = CalendarEvent
+          .where("DATE(starts_at) BETWEEN ? AND ?", week_start, week_end)
+          .order(:starts_at)
+          .includes(:task, :project)
+        render json: {
+          week_start: week_start.iso8601,
+          week_end:   week_end.iso8601,
+          events:     events.map { |e| serialize_event(e) },
+          cron_occurrences: cron_occurrences_for_range(week_start.beginning_of_day, week_end.end_of_day)
+        }
+      end
+
       # GET /api/v1/calendar/events/:id/history
       def history
         event = CalendarEvent.find(params[:id])
@@ -119,6 +149,27 @@ module Api
           verification_source: event.verification_source,
           execution_detail:   event.execution_detail
         )
+      end
+
+      def cron_occurrences_for_range(start_time, end_time)
+        CronJob.where(enabled: true).includes(:task, :project).filter_map do |job|
+          if job.next_run_at && job.next_run_at.between?(start_time, end_time)
+            {
+              id: "cron-#{job.id}",
+              cron_job_id: job.id,
+              title: job.name,
+              starts_at: job.next_run_at.iso8601,
+              status: job.status || "scheduled",
+              source: "cron_job",
+              cron_expression: job.cron_expression,
+              agent_id: job.agent_id,
+              task_id: job.task_id,
+              project_id: job.project_id,
+              task: job.task ? { id: job.task.id, title: job.task.title } : nil,
+              project: job.project ? { id: job.project.id, title: job.project.name } : nil
+            }
+          end
+        end
       end
 
       def serialize_cron_job(cron_job)

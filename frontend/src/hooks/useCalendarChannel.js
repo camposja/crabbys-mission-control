@@ -30,18 +30,24 @@ export function useCalendarChannel() {
           case "calendar_event_deleted":
             q.invalidateQueries({ queryKey: ["calendar", "events"] });
             q.invalidateQueries({ queryKey: ["calendar", "summary"] });
+            q.invalidateQueries({ queryKey: ["calendar", "week"] });
+            q.invalidateQueries({ queryKey: ["calendar", "today"] });
             break;
 
           case "cron_job_updated":
           case "cron_job_destroyed":
             q.invalidateQueries({ queryKey: ["calendar", "cronJobs"] });
             q.invalidateQueries({ queryKey: ["calendar", "summary"] });
+            q.invalidateQueries({ queryKey: ["calendar", "week"] });
+            q.invalidateQueries({ queryKey: ["calendar", "today"] });
             break;
 
           case "calendar_sync_completed":
             q.invalidateQueries({ queryKey: ["calendar", "summary"] });
             q.invalidateQueries({ queryKey: ["calendar", "cronJobs"] });
             q.invalidateQueries({ queryKey: ["calendar", "events"] });
+            q.invalidateQueries({ queryKey: ["calendar", "week"] });
+            q.invalidateQueries({ queryKey: ["calendar", "today"] });
             break;
 
           default:

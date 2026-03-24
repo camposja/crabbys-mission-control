@@ -150,6 +150,8 @@ Rails.application.routes.draw do
         get  "events/:id/history", to: "calendar#history",   as: :calendar_event_history
         get  "cron_jobs",          to: "calendar#cron_jobs",  as: :calendar_cron_jobs
         get  "summary",            to: "calendar#summary",   as: :calendar_summary
+        get  "today",              to: "calendar#today",     as: :calendar_today
+        get  "week",               to: "calendar#week",      as: :calendar_week
       end
 
       # Upcoming calendar events (dashboard widget)
