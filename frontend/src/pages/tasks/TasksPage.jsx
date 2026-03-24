@@ -396,9 +396,9 @@ function TaskCard({ task, isDragging, onPlan, project }) {
         {assignee && (
           <div className="ml-auto relative group/avatar">
             <div className={cn(
-              "w-5 h-5 rounded-full flex items-center justify-center cursor-default",
+              "w-[50px] h-[50px] rounded-full flex items-center justify-center cursor-default",
               assignee.color
-            )} style={{ fontSize: "12px", lineHeight: 1 }}>
+            )} style={{ fontSize: "30px", lineHeight: 1 }}>
               {assignee.letter}
             </div>
             <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
