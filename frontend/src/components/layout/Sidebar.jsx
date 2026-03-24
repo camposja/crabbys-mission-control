@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
   Bot, CalendarDays, BarChart2, Settings,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
-  WifiOff, Wifi, Loader, BookKey,
+  WifiOff, Wifi, Loader, BookKey, Briefcase,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { dashboardApi } from "../../api/dashboard";
@@ -20,6 +20,7 @@ const nav = [
   { to: "/models",    icon: Cpu,              label: "Models"      },
   { to: "/terminal",  icon: TerminalSquare,   label: "Terminal"    },
   { to: "/calendar",  icon: CalendarDays,     label: "Calendar"    },
+  { to: "/job-applications", icon: Briefcase, label: "Job Apps"    },
   { to: "/usage",     icon: BarChart2,        label: "Usage"       },
   { to: "/security",  icon: Shield,           label: "Security"    },
   { to: "/feedback",  icon: MessageSquarePlus,label: "Feedback"    },

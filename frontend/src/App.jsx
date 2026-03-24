@@ -14,6 +14,7 @@ import TerminalPage   from "./pages/terminal/TerminalPage";
 import SecurityPage   from "./pages/security/SecurityPage";
 import FeedbackPage   from "./pages/feedback/FeedbackPage";
 import CalendarPage   from "./pages/calendar/CalendarPage";
+import JobApplicationsPage from "./pages/job-applications/JobApplicationsPage";
 import UsagePage      from "./pages/usage/UsagePage";
 import SettingsPage   from "./pages/settings/SettingsPage";
 import OpsNotesPage   from "./pages/ops-notes/OpsNotesPage";
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="security"   element={<SecurityPage />} />
             <Route path="feedback"   element={<FeedbackPage />} />
             <Route path="calendar"   element={<CalendarPage />} />
+            <Route path="job-applications" element={<JobApplicationsPage />} />
             <Route path="usage"      element={<UsagePage />} />
             <Route path="ops-notes"  element={<OpsNotesPage />} />
             <Route path="settings"   element={<SettingsPage />} />
