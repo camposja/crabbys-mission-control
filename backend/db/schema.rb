@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_23_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_23_231500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -113,6 +113,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_000004) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "updated_by"
+  end
+
+  create_table "ops_notes", force: :cascade do |t|
+    t.text "body"
+    t.string "category"
+    t.text "command_snippet"
+    t.datetime "created_at", null: false
+    t.datetime "last_used_at"
+    t.string "notes_format", default: "markdown", null: false
+    t.boolean "pinned", default: false, null: false
+    t.string "slug", null: false
+    t.jsonb "source_links", default: []
+    t.string "status", default: "active", null: false
+    t.jsonb "tags", default: []
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_ops_notes_on_category"
+    t.index ["pinned"], name: "index_ops_notes_on_pinned"
+    t.index ["slug"], name: "index_ops_notes_on_slug", unique: true
+    t.index ["status"], name: "index_ops_notes_on_status"
   end
 
   create_table "projects", force: :cascade do |t|
