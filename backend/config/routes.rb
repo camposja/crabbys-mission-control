@@ -45,6 +45,14 @@ Rails.application.routes.draw do
         end
       end
 
+      # Job applications
+      resources :job_applications, only: [:index, :create, :update] do
+        collection do
+          get :grouped_by_date
+          post :sync
+        end
+      end
+
       # Agents (direct, merged with gateway)
       resources :agents, only: [:index, :show] do
         member do
