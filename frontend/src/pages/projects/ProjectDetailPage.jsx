@@ -507,10 +507,10 @@ function TaskRow({ task }) {
       {assignee && (
         <div
           className={cn(
-            "w-5 h-5 rounded-full flex items-center justify-center shrink-0",
+            "w-[50px] h-[50px] rounded-full flex items-center justify-center shrink-0",
             assignee.color
           )}
-          style={{ fontSize: "12px", lineHeight: 1 }}
+          style={{ fontSize: "30px", lineHeight: 1 }}
           title={assignee.label}
         >
           {assignee.letter}
