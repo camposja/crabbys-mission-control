@@ -7,4 +7,5 @@ export const cronJobsApi = {
   destroy:  (id)         => client.delete(`/cron_jobs/${id}`).then(r => r.data),
   toggle:   (id)         => client.patch(`/cron_jobs/${id}/toggle`).then(r => r.data),
   runNow:   (id)         => client.post(`/cron_jobs/${id}/run_now`).then(r => r.data),
+  sync:     ()           => client.post("/cron_jobs/sync").then(r => r.data),
 };

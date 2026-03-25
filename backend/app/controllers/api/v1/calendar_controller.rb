@@ -1,3 +1,5 @@
+require "fugit"
+
 module Api
   module V1
     class CalendarController < BaseController
@@ -32,8 +34,14 @@ module Api
       end
 
       # GET /api/v1/calendar/cron_jobs
+      # Live read from gateway; falls back to local DB.
       def cron_jobs
-        render json: CronJob.all.order(:name).map { |cj| serialize_cron_job(cj) }
+        gateway_jobs = fetch_gateway_cron_jobs
+        if gateway_jobs
+          render json: gateway_jobs
+        else
+          render json: CronJob.all.order(:name).map { |cj| serialize_cron_job(cj) }
+        end
       end
 
       # GET /api/v1/calendar/summary
@@ -91,6 +99,30 @@ module Api
       end
 
       private
+
+      def fetch_gateway_cron_jobs
+        client = ::Openclaw::GatewayClient.new
+        data = client.rpc("cron.list")
+        raw = data.is_a?(Array) ? data : (data["jobs"] || data["data"] || [])
+        Array.wrap(raw).map do |gj|
+          schedule = gj["schedule"] || {}
+          state    = gj["state"] || {}
+          {
+            id:              gj["id"] || gj["jobId"],
+            name:            gj["name"] || gj["id"],
+            cron_expression: schedule["kind"] == "cron" ? schedule["expr"] : schedule.to_s.truncate(60),
+            enabled:         gj.fetch("enabled", true),
+            status:          gj.fetch("enabled", true) ? "active" : "disabled",
+            next_run_at:     state["nextRunAtMs"] ? Time.at(state["nextRunAtMs"] / 1000.0).iso8601 : nil,
+            last_run_at:     state["lastRunAtMs"] ? Time.at(state["lastRunAtMs"] / 1000.0).iso8601 : nil,
+            failure_count:   state["consecutiveErrors"] || 0,
+            source:          "gateway"
+          }
+        end
+      rescue ::Openclaw::GatewayError => e
+        Rails.logger.warn("[CalendarController] Gateway cron.list failed: #{e.message}")
+        nil
+      end
 
       def upcoming_events
         CalendarEvent.upcoming.limit(10).includes(:task, :project)
@@ -151,24 +183,89 @@ module Api
         )
       end
 
+      # Expand cron jobs into individual occurrences within a time range.
+      # Reads live from the gateway; falls back to local DB.
+      # Uses fugit to parse cron expressions and compute all fire times in the range.
       def cron_occurrences_for_range(start_time, end_time)
-        CronJob.where(enabled: true).includes(:task, :project).filter_map do |job|
-          if job.next_run_at && job.next_run_at.between?(start_time, end_time)
-            {
-              id: "cron-#{job.id}",
-              cron_job_id: job.id,
-              title: job.name,
-              starts_at: job.next_run_at.iso8601,
-              status: job.status || "scheduled",
-              source: "cron_job",
-              cron_expression: job.cron_expression,
-              agent_id: job.agent_id,
-              task_id: job.task_id,
-              project_id: job.project_id,
-              task: job.task ? { id: job.task.id, title: job.task.title } : nil,
-              project: job.project ? { id: job.project.id, title: job.project.name } : nil
-            }
+        jobs = fetch_gateway_cron_jobs_raw || local_cron_jobs_raw
+        return [] if jobs.blank?
+
+        occurrences = []
+        jobs.each do |job|
+          expr = job[:cron_expression]
+          next if expr.blank?
+
+          begin
+            cron = Fugit::Cron.parse(expr)
+            next unless cron
+
+            tz = job[:tz] || "America/New_York"
+            cursor = cron.next_time(start_time.in_time_zone(tz))
+            safety = 0
+
+            while cursor && cursor <= end_time && safety < 200
+              occurrences << {
+                id:              "cron-#{job[:id]}-#{cursor.to_i}",
+                cron_job_id:     job[:id],
+                title:           job[:name],
+                starts_at:       cursor.utc.iso8601,
+                status:          job[:enabled] ? "scheduled" : "disabled",
+                source:          "cron_job",
+                cron_expression: expr,
+                agent_id:        job[:agent_id],
+                task_id:         job[:task_id],
+                project_id:      job[:project_id],
+                task:            job[:task],
+                project:         job[:project]
+              }
+              cursor = cron.next_time(cursor)
+              safety += 1
+            end
+          rescue => e
+            Rails.logger.warn("[CalendarController] Failed to expand cron '#{expr}': #{e.message}")
           end
+        end
+
+        occurrences
+      end
+
+      def fetch_gateway_cron_jobs_raw
+        client = ::Openclaw::GatewayClient.new
+        data = client.rpc("cron.list")
+        raw = data.is_a?(Array) ? data : (data["jobs"] || data["data"] || [])
+        Array.wrap(raw).map do |gj|
+          schedule = gj["schedule"] || {}
+          {
+            id:              gj["id"] || gj["jobId"],
+            name:            gj["name"] || gj["id"],
+            cron_expression: schedule["kind"] == "cron" ? schedule["expr"] : nil,
+            tz:              schedule["tz"],
+            enabled:         gj.fetch("enabled", true),
+            agent_id:        gj.dig("payload", "agentId") || gj["agentId"],
+            task_id:         nil,
+            project_id:      nil,
+            task:            nil,
+            project:         nil
+          }
+        end
+      rescue ::Openclaw::GatewayError
+        nil
+      end
+
+      def local_cron_jobs_raw
+        CronJob.where(enabled: true).includes(:task, :project).map do |job|
+          {
+            id:              job.id,
+            name:            job.name,
+            cron_expression: job.cron_expression,
+            tz:              "America/New_York",
+            enabled:         job.enabled,
+            agent_id:        job.agent_id,
+            task_id:         job.task_id,
+            project_id:      job.project_id,
+            task:            job.task ? { id: job.task.id, title: job.task.title } : nil,
+            project:         job.project ? { id: job.project.id, title: job.project.name } : nil
+          }
         end
       end
 

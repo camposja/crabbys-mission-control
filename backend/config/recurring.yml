@@ -24,6 +24,11 @@ development:
     queue: default
     schedule: every 5 minutes
 
+  cron_sync:
+    class: CronSyncJob
+    queue: default
+    schedule: every 5 minutes
+
   usage_spike_checker:
     class: UsageSpikeCheckerJob
     queue: default
@@ -47,6 +52,11 @@ production:
 
   calendar_sync:
     class: CalendarSyncJob
+    queue: default
+    schedule: every 5 minutes
+
+  cron_sync:
+    class: CronSyncJob
     queue: default
     schedule: every 5 minutes
 
