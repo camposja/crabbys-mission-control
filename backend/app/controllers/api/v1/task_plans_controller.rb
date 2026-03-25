@@ -32,9 +32,13 @@ module Api
       end
 
       # POST /api/v1/tasks/:id/plan/approve
-      # Step 2: user reviewed plan, now spawn the agent and start the task.
+      # Step 2: user reviewed plan. Optionally spawn an agent.
+      # Default: just approve the plan and move to in_progress (no spawn).
+      # Pass spawn: true to also enqueue SpawnAgentJob.
       def approve
         edited_plan = params[:plan]
+        spawn_agent = ActiveModel::Type::Boolean.new.cast(params[:spawn])
+
         @task.update!(
           plan_content:    edited_plan || @task.plan_content,
           plan_approved_at: Time.current
@@ -43,16 +47,22 @@ module Api
         # Move task to in_progress via AASM if still in backlog
         @task.start! if @task.backlog?
 
-        # Enqueue background job to create the OpenClaw sub-agent
-        SpawnAgentJob.perform_later(@task.id)
-
-        ::EventStore.emit(
-          type:    "plan_approved",
-          message: "Plan approved for \"#{@task.title}\" — spawning agent",
-          metadata: { task_id: @task.id, project_id: @task.project_id }
-        )
-
-        render json: { task: @task, message: "Plan approved. Agent is being spawned." }
+        if spawn_agent
+          SpawnAgentJob.perform_later(@task.id)
+          ::EventStore.emit(
+            type:    "plan_approved",
+            message: "Plan approved for \"#{@task.title}\" — spawning agent",
+            metadata: { task_id: @task.id, project_id: @task.project_id }
+          )
+          render json: { task: @task, message: "Plan approved. Agent is being spawned." }
+        else
+          ::EventStore.emit(
+            type:    "plan_approved",
+            message: "Plan approved for \"#{@task.title}\" — assigned to Crabby (no spawn)",
+            metadata: { task_id: @task.id, project_id: @task.project_id }
+          )
+          render json: { task: @task, message: "Plan approved. Task assigned to Crabby." }
+        end
       end
 
       private

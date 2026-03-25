@@ -70,7 +70,7 @@ module Api
       end
 
       def project_params
-        params.require(:project).permit(:name, :description, :status, :color)
+        params.require(:project).permit(:name, :description, :status, :color, :telegram_thread_id, :telegram_thread_name)
       end
     end
   end

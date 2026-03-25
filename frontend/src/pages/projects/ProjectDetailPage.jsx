@@ -274,12 +274,25 @@ export default function ProjectDetailPage() {
 
 // ── Edit Project Form ────────────────────────────────────────────────────────
 
+// Known Telegram threads in Claw 🦀 Krusty Restaurant
+const TELEGRAM_THREADS = [
+  { id: "",    label: "None" },
+  { id: "1",   label: "General" },
+  { id: "2",   label: "Learn Italian" },
+  { id: "3",   label: "Job search" },
+  { id: "282", label: "Saas business" },
+  { id: "287", label: "Money ideas" },
+];
+
 function EditProjectForm({ project, onClose, onSaved }) {
   const [name, setName] = useState(project.name || "");
   const [description, setDescription] = useState(project.description || "");
   const [color, setColor] = useState(project.color || COLOR_SWATCHES[0]);
   const [status, setStatus] = useState(project.status || "active");
+  const [telegramThreadId, setTelegramThreadId] = useState(String(project.telegram_thread_id || ""));
   const [error, setError] = useState(null);
+
+  const selectedThread = TELEGRAM_THREADS.find(t => t.id === telegramThreadId);
 
   const updateMutation = useMutation({
     mutationFn: (data) => projectsApi.update(project.id, data),
@@ -297,6 +310,8 @@ function EditProjectForm({ project, onClose, onSaved }) {
       description: description.trim() || null,
       color,
       status,
+      telegram_thread_id: telegramThreadId || null,
+      telegram_thread_name: selectedThread?.label || null,
     });
   };
 
@@ -367,6 +382,20 @@ function EditProjectForm({ project, onClose, onSaved }) {
           <option value="completed">Completed</option>
           <option value="archived">Archived</option>
         </select>
+
+        {/* Telegram Thread */}
+        <div>
+          <label className="text-xs text-gray-400 mb-1.5 block">Telegram Thread</label>
+          <select
+            value={telegramThreadId}
+            onChange={(e) => setTelegramThreadId(e.target.value)}
+            className="w-full bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none"
+          >
+            {TELEGRAM_THREADS.map(t => (
+              <option key={t.id} value={t.id}>{t.label}{t.id ? ` (thread:${t.id})` : ""}</option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex items-center gap-2 pt-1">
           <button
