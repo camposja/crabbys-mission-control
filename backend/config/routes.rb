@@ -39,6 +39,9 @@ Rails.application.routes.draw do
       # Calendar / cron
       resources :calendar_events
       resources :cron_jobs do
+        collection do
+          post :sync
+        end
         member do
           patch :toggle
           post  :run_now

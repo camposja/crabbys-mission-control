@@ -398,6 +398,7 @@ function CronJobRow({ job, onSelect }) {
 
 // ── Cron jobs tab ────────────────────────────────────────────────────────────
 function CronJobsTab({ projectFilter = "all" }) {
+  const qc = useQueryClient();
   const [selectedJob, setSelectedJob] = useState(null);
 
   const cronParams = useMemo(() => {
@@ -406,15 +407,26 @@ function CronJobsTab({ projectFilter = "all" }) {
     return p;
   }, [projectFilter]);
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, dataUpdatedAt } = useQuery({
     queryKey: ["calendar", "cronJobs", cronParams],
     queryFn: () => cronJobsApi.getAll(cronParams),
+    refetchInterval: 60_000,
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: () => cronJobsApi.sync(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["calendar", "cronJobs"] });
+      qc.invalidateQueries({ queryKey: ["calendar", "summary"] });
+    },
   });
 
   const jobs = useMemo(() => {
     if (!data) return [];
     return Array.isArray(data) ? data : data.cron_jobs || [];
   }, [data]);
+
+  const isGatewaySource = jobs.length > 0 && jobs[0]?.source === "gateway";
 
   if (isError) {
     return (
@@ -445,6 +457,47 @@ function CronJobsTab({ projectFilter = "all" }) {
 
   return (
     <>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "text-[10px] uppercase tracking-wide font-medium px-2 py-0.5 rounded-full border",
+            isGatewaySource
+              ? "bg-green-500/10 border-green-500/20 text-green-400"
+              : "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+          )}>
+            {isGatewaySource ? "Live from Gateway" : "Local DB (offline fallback)"}
+          </span>
+          {dataUpdatedAt && (
+            <span className="text-xs text-gray-600">
+              Updated {formatRelative(new Date(dataUpdatedAt).toISOString())}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => qc.invalidateQueries({ queryKey: ["calendar", "cronJobs"] })}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white px-2.5 py-1.5 rounded transition-colors"
+          >
+            <RefreshCw size={12} /> Refresh
+          </button>
+          <button
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            className="flex items-center gap-1.5 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-2.5 py-1.5 rounded transition-colors disabled:opacity-50"
+          >
+            {syncMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {syncMutation.isPending ? "Syncing..." : "Sync to DB"}
+          </button>
+        </div>
+      </div>
+
+      {syncMutation.isSuccess && (
+        <div className="mb-3 flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2">
+          <CheckCircle size={13} className="text-green-400" />
+          <p className="text-xs text-green-400">Synced {syncMutation.data?.synced} cron jobs to local DB</p>
+        </div>
+      )}
+
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-800">
         {jobs.map(job => (
           <CronJobRow key={job.id} job={job} onSelect={() => setSelectedJob(job)} />
@@ -473,10 +526,18 @@ function getSundayOfCurrentWeek() {
 
 // ── Main page ────────────────────────────────────────────────────────────────
 function CalendarInner() {
+  const qcCalendar = useQueryClient();
   const { connected } = useCalendarChannel();
-  const [tab, setTab] = useState("events");
+  const [tab, setTab] = useState("week");
   const [projectFilter, setProjectFilter] = useState("all");
   const [weekStart, setWeekStart] = useState(getSundayOfCurrentWeek);
+
+  const syncMutationTop = useMutation({
+    mutationFn: () => cronJobsApi.sync(),
+    onSuccess: () => {
+      qcCalendar.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
 
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ["calendar", "summary"],
@@ -496,30 +557,39 @@ function CalendarInner() {
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b border-gray-800">
-        <div className="flex items-center gap-3 mb-3">
-          <h1 className="text-2xl font-bold text-white">Calendar</h1>
-          <span
-            className={cn(
-              "flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border",
-              connected
-                ? "bg-green-500/10 border-green-500/20 text-green-400"
-                : "bg-gray-500/10 border-gray-500/20 text-gray-500"
-            )}
-          >
-            <span className={cn("inline-block w-1.5 h-1.5 rounded-full", connected ? "bg-green-500" : "bg-gray-500")} />
-            {connected ? "Live" : "Offline"}
-          </span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-white">Calendar</h1>
+            <span
+              className={cn(
+                "flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border",
+                connected
+                  ? "bg-green-500/10 border-green-500/20 text-green-400"
+                  : "bg-gray-500/10 border-gray-500/20 text-gray-500"
+              )}
+            >
+              <span className={cn("inline-block w-1.5 h-1.5 rounded-full", connected ? "bg-green-500" : "bg-gray-500")} />
+              {connected ? "Live" : "Offline"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => qcCalendar.invalidateQueries({ queryKey: ["calendar"] })}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white px-2.5 py-1.5 rounded transition-colors"
+            >
+              <RefreshCw size={12} /> Refresh
+            </button>
+            <button
+              onClick={() => syncMutationTop.mutate()}
+              disabled={syncMutationTop.isPending}
+              className="flex items-center gap-1.5 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-2.5 py-1.5 rounded transition-colors disabled:opacity-50"
+            >
+              {syncMutationTop.isPending ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              {syncMutationTop.isPending ? "Syncing..." : "Sync from Gateway"}
+            </button>
+          </div>
         </div>
         <div className="flex gap-1 bg-gray-800 p-1 rounded-lg w-fit">
-          <button
-            onClick={() => setTab("today")}
-            className={cn(
-              "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-colors",
-              tab === "today" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-white"
-            )}
-          >
-            <Sun size={12} /> Today
-          </button>
           <button
             onClick={() => setTab("week")}
             className={cn(
@@ -528,6 +598,15 @@ function CalendarInner() {
             )}
           >
             <CalendarDays size={12} /> Week
+          </button>
+          <button
+            onClick={() => setTab("today")}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-4 py-2 rounded-md transition-colors",
+              tab === "today" ? "bg-gray-700 text-white" : "text-gray-500 hover:text-white"
+            )}
+          >
+            <Sun size={12} /> Today
           </button>
           <button
             onClick={() => setTab("events")}

@@ -430,6 +430,7 @@ DEPENDENCIES
   dotenv-rails
   factory_bot_rails
   faraday (~> 2.0)
+  fugit (~> 1.12)
   jwt
   kamal
   kaminari
