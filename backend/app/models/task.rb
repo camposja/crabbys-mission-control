@@ -9,6 +9,8 @@ class Task < ApplicationRecord
   validates :title, presence: true
   validates :priority, inclusion: { in: PRIORITIES }, allow_nil: true
 
+  before_validation :sync_assignees
+
   # AASM state machine — forward-only for the planned workflow,
   # but drag-and-drop can bypass via direct update (see TasksController#move)
   aasm column: :status, whiny_transitions: false do
@@ -16,6 +18,7 @@ class Task < ApplicationRecord
     state :in_progress
     state :review
     state :done
+    state :recurring
 
     event :start do
       transitions from: :backlog, to: :in_progress,
@@ -34,15 +37,18 @@ class Task < ApplicationRecord
 
     # Free-move event used by drag-and-drop (allows any direction)
     event :move_to_status do
-      transitions from: %i[backlog in_progress review done],
-                  to:   %i[backlog in_progress review done],
+      transitions from: %i[backlog in_progress review done recurring],
+                  to:   %i[backlog in_progress review done recurring],
                   after: :record_transition
     end
   end
 
   scope :by_status,   ->(s) { where(status: s) }
   scope :ordered,     -> { order(:position, :created_at) }
-  scope :for_crabby,  -> { where(assignee: "crabby").where.not(status: "done") }
+  scope :for_crabby,  -> {
+    where("assignee = 'crabby' OR assignees @> ?::jsonb", '["crabby"]')
+      .where.not(status: "done")
+  }
   scope :orphaned_agents, -> {
     where(openclaw_agent_id: nil)
       .where(agent_status: %w[spawn_requested running in_progress])
@@ -53,6 +59,18 @@ class Task < ApplicationRecord
   }
 
   after_update_commit :broadcast_update
+
+  # Helper to check if a specific person/agent is assigned
+  def assigned_to?(name)
+    assignees_list.include?(name.to_s.downcase)
+  end
+
+  def assignees_list
+    list = Array(assignees).map(&:to_s).map(&:downcase).reject(&:blank?)
+    # Fall back to legacy single assignee if assignees array is empty
+    list = [assignee.to_s.downcase].reject(&:blank?) if list.empty? && assignee.present?
+    list.uniq
+  end
 
   private
 
@@ -65,5 +83,14 @@ class Task < ApplicationRecord
       event: "task_updated",
       task:  as_json
     })
+  end
+
+  # Keep legacy `assignee` column in sync with first entry of `assignees`
+  def sync_assignees
+    if assignees.is_a?(Array) && assignees.any?(&:present?)
+      self.assignee = assignees.first
+    elsif assignee.present? && (assignees.blank? || assignees.empty?)
+      self.assignees = [assignee]
+    end
   end
 end

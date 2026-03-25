@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_23_231500) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_004200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,6 +93,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_231500) do
     t.string "status"
     t.string "title"
     t.datetime "updated_at", null: false
+  end
+
+  create_table "job_applications", force: :cascade do |t|
+    t.date "applied_on", null: false
+    t.string "company", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "external_data", default: {}, null: false
+    t.string "external_uid", null: false
+    t.string "location"
+    t.text "notes"
+    t.string "source", null: false
+    t.string "status", default: "pending", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.string "url"
+    t.index ["applied_on"], name: "index_job_applications_on_applied_on"
+    t.index ["external_data"], name: "index_job_applications_on_external_data", using: :gin
+    t.index ["source", "external_uid"], name: "index_job_applications_on_source_and_external_uid", unique: true
+    t.index ["source"], name: "index_job_applications_on_source"
+    t.index ["status"], name: "index_job_applications_on_status"
   end
 
   create_table "memories", force: :cascade do |t|
@@ -278,6 +298,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_23_231500) do
   create_table "tasks", force: :cascade do |t|
     t.string "agent_status"
     t.string "assignee"
+    t.jsonb "assignees", default: [], null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.datetime "due_date"

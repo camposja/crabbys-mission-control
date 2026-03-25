@@ -10,6 +10,7 @@ import PlanningModal from "../../components/tasks/PlanningModal";
 
 const COLUMNS = [
   { id: "backlog",     label: "Backlog",     color: "text-gray-400",   dot: "bg-gray-500"   },
+  { id: "recurring",   label: "Recurring",   color: "text-purple-400", dot: "bg-purple-500" },
   { id: "in_progress", label: "In Progress", color: "text-blue-400",   dot: "bg-blue-500"   },
   { id: "review",      label: "Review",      color: "text-yellow-400", dot: "bg-yellow-500" },
   { id: "done",        label: "Done",        color: "text-green-400",  dot: "bg-green-500"  },
@@ -31,8 +32,8 @@ const AGENT_STATUS_COLORS = {
 };
 
 const ASSIGNEES = [
-  { id: "jose",   label: "Jose",   letter: "🧑🏽‍💻", color: "bg-gray-800"   },
-  { id: "crabby", label: "Crabby", letter: "🦀",      color: "bg-gray-800" },
+  { id: "jose",   label: "Jose",   letter: "🧑🏽‍💻", color: "bg-blue-600"   },
+  { id: "crabby", label: "Crabby", letter: "🦀",      color: "bg-orange-500" },
 ];
 
 function getAssignee(id) {
@@ -157,7 +158,7 @@ export default function TasksPage() {
 
       {/* Kanban board */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-4 gap-4 flex-1 min-h-0">
+        <div className="grid grid-cols-5 gap-4 flex-1 min-h-0">
           {COLUMNS.map(col => {
             const cards = tasksByStatus[col.id] || [];
             return (
@@ -250,7 +251,7 @@ export default function TasksPage() {
 function AddCardForm({ onSave, onCancel, saving, projects }) {
   const [title,       setTitle]       = useState("");
   const [description, setDescription] = useState("");
-  const [assignee,    setAssignee]    = useState("");
+  const [selectedAssignees, setSelectedAssignees] = useState([]);
   const [priority,    setPriority]    = useState("medium");
   const [projectId,   setProjectId]   = useState("");
   const [dueDate,     setDueDate]     = useState("");
@@ -258,13 +259,20 @@ function AddCardForm({ onSave, onCancel, saving, projects }) {
 
   useEffect(() => { titleRef.current?.focus(); }, []);
 
+  const toggleAssignee = (id) => {
+    setSelectedAssignees(prev =>
+      prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
+    );
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title.trim()) return;
     onSave({
       title:      title.trim(),
       description: description.trim() || null,
-      assignee:   assignee || null,
+      assignee:   selectedAssignees[0] || null,
+      assignees:  selectedAssignees,
       priority,
       project_id: projectId || null,
       due_date:   dueDate || null,
@@ -289,11 +297,23 @@ function AddCardForm({ onSave, onCancel, saving, projects }) {
         className="w-full bg-gray-900 text-white text-xs rounded px-2.5 py-1.5 outline-none placeholder-gray-600 border border-gray-700 focus:border-orange-500/50 resize-none"
       />
       <div className="flex gap-2">
-        <select value={assignee} onChange={e => setAssignee(e.target.value)}
-          className="flex-1 bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none">
-          <option value="">Unassigned</option>
-          {ASSIGNEES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
-        </select>
+        <div className="flex-1 flex items-center gap-2">
+          {ASSIGNEES.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => toggleAssignee(a.id)}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border transition-colors",
+                selectedAssignees.includes(a.id)
+                  ? "bg-orange-500/20 border-orange-500/40 text-orange-400"
+                  : "bg-gray-900 border-gray-700 text-gray-500 hover:text-white"
+              )}
+            >
+              <span>{a.letter}</span> {a.label}
+            </button>
+          ))}
+        </div>
         <select value={priority} onChange={e => setPriority(e.target.value)}
           className="flex-1 bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none">
           <option value="low">Low</option>
@@ -328,7 +348,7 @@ function AddCardForm({ onSave, onCancel, saving, projects }) {
 // ── Task card ─────────────────────────────────────────────────────────────────
 
 function TaskCard({ task, isDragging, onPlan, project }) {
-  const assignee = task.assignee ? getAssignee(task.assignee) : null;
+  const taskAssignees = (task.assignees?.length ? task.assignees : (task.assignee ? [task.assignee] : [])).map(a => getAssignee(a));
   const agentStatusColor = AGENT_STATUS_COLORS[task.agent_status] || "text-gray-600";
   const hasAgent = task.openclaw_agent_id;
 
@@ -393,17 +413,21 @@ function TaskCard({ task, isDragging, onPlan, project }) {
             {new Date(task.due_date).toLocaleDateString()}
           </span>
         )}
-        {assignee && (
-          <div className="ml-auto relative group/avatar">
-            <div className={cn(
-              "w-[50px] h-[50px] rounded-full flex items-center justify-center cursor-default",
-              assignee.color
-            )} style={{ fontSize: "30px", lineHeight: 1 }}>
-              {assignee.letter}
-            </div>
-            <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
-              {assignee.label}
-            </div>
+        {taskAssignees.length > 0 && (
+          <div className="ml-auto flex items-center gap-1">
+            {taskAssignees.map((a, idx) => (
+              <div key={a.id || idx} className="relative group/avatar">
+                <div className={cn(
+                  "w-6 h-6 rounded-full flex items-center justify-center cursor-default text-sm",
+                  a.color
+                )}>
+                  {a.letter}
+                </div>
+                <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
+                  {a.label}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
