@@ -39,11 +39,14 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
     },
   });
 
-  // Step 3: approve plan
+  // Step 3: approve plan (with or without spawning an agent)
+  const [doneMessage, setDoneMessage] = useState("Plan approved!");
+
   const approveMutation = useMutation({
-    mutationFn: () => tasksApi.approvePlan(task.id, plan),
-    onSuccess: () => {
+    mutationFn: ({ spawn = false } = {}) => tasksApi.approvePlan(task.id, plan, spawn),
+    onSuccess: (data) => {
       setError(null);
+      setDoneMessage(data.message || "Plan approved!");
       setStep(STEPS.DONE);
       setTimeout(() => onApproved?.(), 1200);
     },
@@ -155,7 +158,7 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
                 className="w-full bg-gray-800 border border-gray-700 focus:border-orange-500/50 text-white text-sm rounded px-3 py-2.5 outline-none resize-none font-mono leading-relaxed"
               />
               <p className="text-xs text-gray-600">
-                You can edit the plan above. Once approved, an agent will be spawned to execute it.
+                You can edit the plan above. Choose to assign directly to Crabby or optionally spawn a sub-agent.
               </p>
             </div>
           )}
@@ -164,8 +167,7 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
           {step === STEPS.DONE && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <CheckCircle size={32} className="text-green-400" />
-              <p className="text-white font-medium">Plan approved!</p>
-              <p className="text-sm text-gray-400">Spawning agent…</p>
+              <p className="text-white font-medium">{doneMessage}</p>
             </div>
           )}
         </div>
@@ -198,19 +200,34 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
               )}
 
               {step === STEPS.PLAN && (
-                <button
-                  onClick={() => approveMutation.mutate()}
-                  disabled={approveMutation.isPending || !plan.trim()}
-                  className={cn(
-                    "flex items-center gap-1.5 text-sm px-4 py-2 rounded-md font-medium transition-colors",
-                    "bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
-                  )}
-                >
-                  {approveMutation.isPending
-                    ? <><Loader2 size={13} className="animate-spin" /> Approving…</>
-                    : <><CheckCircle size={13} /> Approve & Spawn Agent</>
-                  }
-                </button>
+                <>
+                  <button
+                    onClick={() => approveMutation.mutate({ spawn: false })}
+                    disabled={approveMutation.isPending || !plan.trim()}
+                    className={cn(
+                      "flex items-center gap-1.5 text-sm px-4 py-2 rounded-md font-medium transition-colors",
+                      "bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+                    )}
+                  >
+                    {approveMutation.isPending
+                      ? <><Loader2 size={13} className="animate-spin" /> Approving…</>
+                      : <><CheckCircle size={13} /> Approve (Assign to Crabby)</>
+                    }
+                  </button>
+                  <button
+                    onClick={() => approveMutation.mutate({ spawn: true })}
+                    disabled={approveMutation.isPending || !plan.trim()}
+                    className={cn(
+                      "flex items-center gap-1.5 text-sm px-4 py-2 rounded-md font-medium transition-colors",
+                      "bg-gray-700 hover:bg-gray-600 text-gray-300 disabled:opacity-50"
+                    )}
+                  >
+                    {approveMutation.isPending
+                      ? <><Loader2 size={13} className="animate-spin" /> Spawning…</>
+                      : <><Bot size={13} /> Spawn Agent</>
+                    }
+                  </button>
+                </>
               )}
             </div>
           </div>

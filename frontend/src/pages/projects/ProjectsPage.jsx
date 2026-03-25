@@ -165,12 +165,25 @@ function ProjectCard({ project, onClick }) {
 
 // ── New Project Form ──────────────────────────────────────────────────────────
 
+// Known Telegram threads in Claw 🦀 Krusty Restaurant
+const TELEGRAM_THREADS = [
+  { id: "",    label: "None" },
+  { id: "1",   label: "General" },
+  { id: "2",   label: "Learn Italian" },
+  { id: "3",   label: "Job search" },
+  { id: "282", label: "Saas business" },
+  { id: "287", label: "Money ideas" },
+];
+
 function NewProjectForm({ onClose, onCreated }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(COLOR_SWATCHES[0]);
   const [status, setStatus] = useState("active");
+  const [telegramThreadId, setTelegramThreadId] = useState("");
   const [error, setError] = useState(null);
+
+  const selectedThread = TELEGRAM_THREADS.find(t => t.id === telegramThreadId);
 
   const createMutation = useMutation({
     mutationFn: projectsApi.create,
@@ -188,6 +201,8 @@ function NewProjectForm({ onClose, onCreated }) {
       description: description.trim() || null,
       color,
       status,
+      telegram_thread_id: telegramThreadId || null,
+      telegram_thread_name: selectedThread?.label || null,
     });
   };
 
@@ -254,6 +269,20 @@ function NewProjectForm({ onClose, onCreated }) {
           <option value="completed">Completed</option>
           <option value="archived">Archived</option>
         </select>
+
+        {/* Telegram Thread */}
+        <div>
+          <label className="text-xs text-gray-400 mb-1.5 block">Telegram Thread</label>
+          <select
+            value={telegramThreadId}
+            onChange={e => setTelegramThreadId(e.target.value)}
+            className="w-full bg-gray-900 text-white text-xs rounded px-2 py-1.5 border border-gray-700 outline-none"
+          >
+            {TELEGRAM_THREADS.map(t => (
+              <option key={t.id} value={t.id}>{t.label}{t.id ? ` (thread:${t.id})` : ""}</option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex items-center gap-2 pt-1">
           <button

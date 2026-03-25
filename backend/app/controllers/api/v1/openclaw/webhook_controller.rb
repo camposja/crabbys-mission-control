@@ -105,17 +105,26 @@ module Api
         def handle_agent_completed(task, agent_id, message)
           if task
             old_status = task.status
-            updates = { agent_status: "completed", status: "done" }
+            updates = { agent_status: "completed" }
             updates[:openclaw_agent_id] = agent_id if agent_id.present? && task.openclaw_agent_id.blank?
+
+            # Never auto-close recurring tasks
+            unless task.status == "recurring"
+              updates[:status] = "done"
+            end
+
             task.update_columns(updates)
-            ActionCable.server.broadcast("task_updates", {
-              event:      "task_moved",
-              task_id:    task.id,
-              task_title: task.title,
-              old_status: old_status,
-              new_status: "done",
-              source:     "agent_webhook"
-            })
+
+            if updates[:status] == "done"
+              ActionCable.server.broadcast("task_updates", {
+                event:      "task_moved",
+                task_id:    task.id,
+                task_title: task.title,
+                old_status: old_status,
+                new_status: "done",
+                source:     "agent_webhook"
+              })
+            end
           end
           EventStore.emit(
             type:     "agent_completed",

@@ -9,5 +9,5 @@ export const tasksApi = {
   destroy:      (id)           => client.delete(`/tasks/${id}`).then(r => r.data),
   // Planning
   getPlan:      (id, answers)  => client.post(`/tasks/${id}/plan`, { answers }).then(r => r.data),
-  approvePlan:  (id, plan)     => client.post(`/tasks/${id}/plan_approve`, { plan }).then(r => r.data),
+  approvePlan:  (id, plan, spawn = false) => client.post(`/tasks/${id}/plan_approve`, { plan, spawn }).then(r => r.data),
 };

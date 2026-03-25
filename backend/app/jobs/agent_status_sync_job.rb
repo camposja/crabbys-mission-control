@@ -68,8 +68,8 @@ class AgentStatusSyncJob < ApplicationJob
     new_status = STATUS_MAP[status] || status
     updates    = { agent_status: new_status }
 
-    # When the agent finishes, move the task card to done unless it's already there
-    if TERMINAL_STATES.include?(status) && task.status != "done"
+    # When the agent finishes, move the task card to done — but NEVER auto-close recurring tasks
+    if TERMINAL_STATES.include?(status) && task.status != "done" && task.status != "recurring"
       updates[:status] = "done"
       ActionCable.server.broadcast("task_updates", {
         event:      "task_moved",
