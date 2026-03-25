@@ -53,15 +53,38 @@ class JobApplicationsSyncService
   end
 
   def import_payload(path, payload)
-    if payload["applications"].is_a?(Array)
+    # Handle plain arrays (e.g. [{company:..., title:...}, ...])
+    if payload.is_a?(Array)
+      import_plain_array(path, payload)
+    elsif payload.is_a?(Hash) && payload["applications"].is_a?(Array)
       import_application_list(path, payload)
-    elsif payload["jobs"].is_a?(Array)
+    elsif payload.is_a?(Hash) && payload["jobs"].is_a?(Array)
       import_jobs_list(path, payload)
-    elsif payload["applied"].is_a?(Array)
+    elsif payload.is_a?(Hash) && payload["applied"].is_a?(Array)
       import_applied_list(path, payload)
     else
       [0, 0]
     end
+  end
+
+  def import_plain_array(path, items)
+    upserted = items.count do |item|
+      next false unless item.is_a?(Hash) && (item["company"].present? || item["title"].present?)
+
+      upsert_application!(
+        source: "assistant",
+        external_uid: external_uid_for(path, item["requisition_id"] || item["url"] || item["title"], item),
+        title: item["title"] || item["role"] || "Unknown Role",
+        company: item["company"] || "Unknown Company",
+        location: item["location"],
+        url: item["url"],
+        status: normalize_status(item["status"] || "applied"),
+        applied_on: parse_date(item["date"]) || filename_date(path),
+        notes: item["notes"],
+        external_data: item.merge("source_file" => File.basename(path), "ingest_format" => "plain_array")
+      )
+    end
+    [items.size, upserted]
   end
 
   def import_application_list(path, payload)
