@@ -25,6 +25,9 @@ class CalendarSyncJob < ApplicationJob
       }
     })
 
+    # Sync job applications from workspace JSON files
+    sync_applications
+
     # Sweep for overdue events and verify execution
     sweep_overdue_events
 
@@ -39,6 +42,12 @@ class CalendarSyncJob < ApplicationJob
   end
 
   private
+
+  def sync_applications
+    ApplicationSyncJob.perform_now
+  rescue => e
+    Rails.logger.warn("[CalendarSyncJob] Application sync error: #{e.message}")
+  end
 
   def sweep_overdue_events
     overdue = CalendarEvent.where(status: "scheduled")

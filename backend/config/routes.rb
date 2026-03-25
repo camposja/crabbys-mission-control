@@ -143,6 +143,9 @@ Rails.application.routes.draw do
       # Ops notes / command cheatsheet
       resources :ops_notes
 
+      # Application sync
+      post "applications/sync", to: "applications#sync"
+
       # Gateway health
       get "gateway", to: "gateway#show"
 
