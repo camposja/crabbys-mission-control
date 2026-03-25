@@ -31,9 +31,15 @@ const AGENT_STATUS_COLORS = {
   idle:          "text-gray-500",
 };
 
+/*
+ * ASSIGNEE AVATAR CONFIG — INTENTIONALLY FIXED
+ * Jose (🧑🏽‍💻) and Crabby (🦀) avatar emojis and circle colors are
+ * intentionally set for product identity. Do not change these emoji
+ * choices, circle colors, or sizing without an explicit request.
+ */
 const ASSIGNEES = [
-  { id: "jose",   label: "Jose",   letter: "🧑🏽‍💻", color: "bg-blue-600"   },
-  { id: "crabby", label: "Crabby", letter: "🦀",      color: "bg-orange-500" },
+  { id: "jose",   label: "Jose",   letter: "🧑🏽‍💻", color: "bg-stone-500"   },
+  { id: "crabby", label: "Crabby", letter: "🦀",      color: "bg-yellow-900" },
 ];
 
 function getAssignee(id) {
@@ -310,7 +316,7 @@ function AddCardForm({ onSave, onCancel, saving, projects }) {
                   : "bg-gray-900 border-gray-700 text-gray-500 hover:text-white"
               )}
             >
-              <span>{a.letter}</span> {a.label}
+              <span style={{ fontSize: "18px", lineHeight: 1 }}>{a.letter}</span> {a.label}
             </button>
           ))}
         </div>
@@ -414,13 +420,13 @@ function TaskCard({ task, isDragging, onPlan, project }) {
           </span>
         )}
         {taskAssignees.length > 0 && (
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1.5">
             {taskAssignees.map((a, idx) => (
               <div key={a.id || idx} className="relative group/avatar">
                 <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center cursor-default text-sm",
+                  "w-10 h-10 rounded-full flex items-center justify-center cursor-default",
                   a.color
-                )}>
+                )} style={{ fontSize: "26px", lineHeight: 1 }}>
                   {a.letter}
                 </div>
                 <div className="absolute bottom-full right-0 mb-1.5 px-2 py-1 bg-gray-700 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none z-10">
