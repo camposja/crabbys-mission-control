@@ -97,7 +97,7 @@ module Api
       end
 
       def task_params
-        params.require(:task).permit(:title, :description, :status, :priority, :assignee, :project_id, :position, :due_date, metadata: {})
+        params.require(:task).permit(:title, :description, :status, :priority, :assignee, :project_id, :position, :due_date, metadata: {}, assignees: [])
       end
     end
   end
