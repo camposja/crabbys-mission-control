@@ -1,3 +1,5 @@
+require "shellwords"
+
 # Reads files directly from the OpenClaw workspace directory.
 # This is the "thin layer" philosophy — we don't copy data, we serve it live.
 module Openclaw
@@ -16,10 +18,17 @@ module Openclaw
       File.join(WORKSPACE_ROOT, "agents")
     end
 
-    # List all markdown/text docs in the workspace (non-recursive top level)
+    # Additional project docs exposed in the Workspace tab
+    EXTRA_WORKSPACE_PATHS = %w[
+      projects/qr-doorbell/MVP.md
+    ].freeze
+
+    # List all markdown/text docs in the workspace (non-recursive top level + extras)
     def self.list_workspace_docs
       return [] unless Dir.exist?(workspace_path)
-      Dir.glob(File.join(workspace_path, "*.{md,txt,json}")).map do |path|
+
+      # Top-level workspace files
+      files = Dir.glob(File.join(workspace_path, "*.{md,txt,json}")).map do |path|
         stat = File.stat(path)
         {
           name:      File.basename(path),
@@ -28,7 +37,66 @@ module Openclaw
           modified:  stat.mtime.iso8601,
           type:      File.extname(path).delete(".")
         }
-      end.sort_by { |f| f[:modified] }.reverse
+      end
+
+      # Extra project docs
+      EXTRA_WORKSPACE_PATHS.each do |rel|
+        full = File.join(workspace_path, rel)
+        next unless File.exist?(full)
+        stat = File.stat(full)
+        files << {
+          name:      rel,
+          path:      full,
+          size:      stat.size,
+          modified:  stat.mtime.iso8601,
+          type:      File.extname(full).delete(".")
+        }
+      end
+
+      files.sort_by { |f| f[:modified] }.reverse
+    end
+
+    # ── Resumes ──────────────────────────────────────────────────────────
+    def self.resumes_path
+      File.join(workspace_path, "resumes")
+    end
+
+    # Browse a directory inside resumes/. Returns folders and files.
+    # +subpath+ is relative to resumes/, e.g. "base" or "tailored".
+    def self.list_resumes(subpath = nil)
+      base = resumes_path
+      return { folders: [], files: [] } unless Dir.exist?(base)
+
+      target = subpath.present? ? File.join(base, subpath) : base
+
+      # Safety: ensure we stay inside resumes/
+      real_target = File.realpath(target) rescue target
+      real_base   = File.realpath(base)
+      raise "Access denied" unless real_target.start_with?(real_base)
+      raise "Not a directory" unless File.directory?(real_target)
+
+      entries = Dir.entries(real_target).reject { |e| e.start_with?(".") }.sort
+
+      folders = entries.select { |e| File.directory?(File.join(real_target, e)) }.map do |name|
+        rel = subpath.present? ? File.join(subpath, name) : name
+        { name: name, path: rel }
+      end
+
+      files = entries.reject { |e| File.directory?(File.join(real_target, e)) }.map do |name|
+        full = File.join(real_target, name)
+        stat = File.stat(full)
+        rel  = subpath.present? ? File.join(subpath, name) : name
+        {
+          name:     name,
+          path:     full,
+          relative: rel,
+          size:     stat.size,
+          modified: stat.mtime.iso8601,
+          type:     File.extname(name).delete(".")
+        }
+      end
+
+      { folders: folders, files: files, current_path: subpath || "" }
     end
 
     # List memory journal files
@@ -48,10 +116,45 @@ module Openclaw
     end
 
     # Read a file's content (only files inside WORKSPACE_ROOT for safety)
+    # .docx files are extracted to plain text (read-only preview).
+    # .pdf files are not supported for preview.
+    BINARY_PREVIEW_TYPES = %w[.pdf].freeze
+
     def self.read_file(path)
       real = File.realpath(path)
       raise "Access denied" unless real.start_with?(File.realpath(WORKSPACE_ROOT))
-      File.read(real)
+
+      ext = File.extname(real).downcase
+
+      if BINARY_PREVIEW_TYPES.include?(ext)
+        raise "Preview not available for #{ext} files"
+      elsif ext == ".docx"
+        read_docx_as_text(real)
+      else
+        File.read(real)
+      end
+    end
+
+    # Extract plain text from a .docx file.
+    # Uses macOS/Linux `unzip` to read word/document.xml, then strips XML tags.
+    # No extra gems required.
+    def self.read_docx_as_text(path)
+      # Extract word/document.xml from the docx (which is a zip file)
+      xml = `unzip -p #{Shellwords.escape(path)} word/document.xml 2>/dev/null`
+      raise "Could not read .docx file — invalid or corrupted" if xml.blank?
+
+      # Strip XML tags, preserve paragraph/row structure
+      xml.gsub(/<\/w:p>/, "\n")          # paragraph breaks
+         .gsub(/<\/w:tr>/, "\n")          # table row breaks
+         .gsub(/<[^>]+>/, "")             # strip all XML tags
+         .gsub(/&amp;/, "&")
+         .gsub(/&lt;/, "<")
+         .gsub(/&gt;/, ">")
+         .gsub(/&quot;/, '"')
+         .gsub(/&apos;/, "'")
+         .gsub(/[ \t]+/, " ")             # collapse horizontal whitespace
+         .gsub(/\n{3,}/, "\n\n")          # collapse excessive newlines
+         .strip
     end
 
     # Write back to a workspace file
