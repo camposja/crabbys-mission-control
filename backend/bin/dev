@@ -1,2 +1,6 @@
 #!/usr/bin/env ruby
+# macOS arm64 + pg 1.6.x: fork() segfaults without this env var.
+# SOLID_QUEUE_IN_PUMA runs background jobs inside Puma (no separate bin/jobs needed).
+ENV["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] ||= "YES"
+ENV["SOLID_QUEUE_IN_PUMA"] ||= "1"
 exec "./bin/rails", "server", *ARGV
