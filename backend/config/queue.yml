@@ -5,8 +5,10 @@ default: &default
   workers:
     - queues: "*"
       threads: 3
-      processes: <%= ENV.fetch("JOB_CONCURRENCY", 1) %>
+      processes: 1
       polling_interval: 0.1
+  # macOS arm64: SolidQueue standalone forks workers, which segfaults with pg 1.6.x.
+  # Workaround: run SolidQueue inside Puma via SOLID_QUEUE_IN_PUMA=1 instead of bin/jobs.
 
 development:
   <<: *default
