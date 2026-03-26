@@ -13,4 +13,8 @@ export const documentsApi = {
       headers: { "Content-Type": "multipart/form-data" },
     }).then(r => r.data);
   },
+
+  // Resumes
+  getResumes:    (subpath) => client.get("/documents/resumes", { params: { path: subpath } }).then(r => r.data),
+  downloadUrl:   (path) => `${client.defaults.baseURL}/documents/download?path=${encodeURIComponent(path)}`,
 };

@@ -75,13 +75,15 @@ Rails.application.routes.draw do
         end
       end
 
-      # Workspace documents (with upload + search)
+      # Workspace documents (with upload + search + resumes)
       resources :documents, only: [:index] do
         collection do
           get  :content
           patch :content,  action: :update_content
           get  :search
           post :upload
+          get  :resumes
+          get  :download
         end
       end
 

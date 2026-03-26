@@ -49,6 +49,37 @@ module Api
         render json: { error: e.message }, status: :unprocessable_entity
       end
 
+      # GET /api/v1/documents/resumes?path=...
+      def resumes
+        listing = ::Openclaw::WorkspaceReader.list_resumes(params[:path])
+        render json: listing
+      rescue => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      # GET /api/v1/documents/download?path=...
+      # Only for resume files — enforced to stay inside resumes/
+      # Downloads restricted to .doc and .txt files only.
+      DOWNLOADABLE_EXTENSIONS = %w[.doc .txt].freeze
+
+      def download
+        path = params[:path].to_s
+        raise "Path required" if path.blank?
+
+        real = File.realpath(path)
+        resumes_root = File.realpath(::Openclaw::WorkspaceReader.resumes_path)
+        raise "Access denied — downloads restricted to resumes" unless real.start_with?(resumes_root)
+        raise "File not found" unless File.exist?(real)
+        raise "Not a file" unless File.file?(real)
+
+        ext = File.extname(real).downcase
+        raise "Download not allowed for #{ext} files. Only #{DOWNLOADABLE_EXTENSIONS.join(', ')} are downloadable." unless DOWNLOADABLE_EXTENSIONS.include?(ext)
+
+        send_file real, filename: File.basename(real), disposition: "attachment"
+      rescue => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
+
       # GET /api/v1/documents/search?q=...
       def search
         q = params[:q].to_s.strip
