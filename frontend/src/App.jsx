@@ -18,6 +18,7 @@ import JobApplicationsPage from "./pages/job-applications/JobApplicationsPage";
 import UsagePage      from "./pages/usage/UsagePage";
 import SettingsPage   from "./pages/settings/SettingsPage";
 import OpsNotesPage   from "./pages/ops-notes/OpsNotesPage";
+import TodosPage      from "./pages/todos/TodosPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="job-applications" element={<JobApplicationsPage />} />
             <Route path="usage"      element={<UsagePage />} />
             <Route path="ops-notes"  element={<OpsNotesPage />} />
+            <Route path="todos"      element={<TodosPage />} />
             <Route path="settings"   element={<SettingsPage />} />
           </Route>
         </Routes>

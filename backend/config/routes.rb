@@ -143,6 +143,18 @@ Rails.application.routes.draw do
       # Ops notes / command cheatsheet
       resources :ops_notes
 
+      # Personal to-dos (Jose only, independent from OpenClaw tasks)
+      resources :personal_todos, only: [:index, :create, :update, :destroy] do
+        collection do
+          get :archived
+        end
+        member do
+          patch :toggle
+          patch :archive
+          patch :unarchive
+        end
+      end
+
       # Application sync
       post "applications/sync", to: "applications#sync"
 
