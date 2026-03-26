@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_225700) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_25_231700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -308,8 +308,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_225700) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "task_attachments", force: :cascade do |t|
+    t.text "content", null: false
+    t.string "content_type", default: "text/plain"
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.bigint "task_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "uploaded_by"
+    t.index ["task_id"], name: "index_task_attachments_on_task_id"
+  end
+
+  create_table "task_notes", force: :cascade do |t|
+    t.string "author", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "task_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["task_id"], name: "index_task_notes_on_task_id"
+  end
+
   create_table "tasks", force: :cascade do |t|
     t.string "agent_status"
+    t.datetime "approved_at"
+    t.string "approved_by"
     t.string "assignee"
     t.jsonb "assignees", default: [], null: false
     t.datetime "created_at", null: false
@@ -359,4 +381,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_225700) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "task_attachments", "tasks"
+  add_foreign_key "task_notes", "tasks"
 end

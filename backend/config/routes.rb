@@ -24,7 +24,10 @@ Rails.application.routes.draw do
           patch :move
           post  :plan,         to: "task_plans#create"
           post  :plan_approve, to: "task_plans#approve"
+          post  :approve
         end
+        resources :task_notes, only: [:index, :create]
+        resources :task_attachments, only: [:index, :create, :destroy]
       end
 
       # Projects
