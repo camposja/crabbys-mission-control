@@ -5,6 +5,8 @@ class Task < ApplicationRecord
 
   belongs_to :project, optional: true
   has_many   :calendar_events, dependent: :nullify
+  has_many   :task_notes, dependent: :destroy
+  has_many   :task_attachments, dependent: :destroy
 
   validates :title, presence: true
   validates :priority, inclusion: { in: PRIORITIES }, allow_nil: true

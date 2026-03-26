@@ -7,6 +7,7 @@ import { projectsApi } from "../../api/projects";
 import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
 import PlanningModal from "../../components/tasks/PlanningModal";
+import TaskDetailDialog from "../../components/tasks/TaskDetailDialog";
 
 const COLUMNS = [
   { id: "backlog",     label: "Backlog",     color: "text-gray-400",   dot: "bg-gray-500"   },
@@ -52,8 +53,9 @@ export default function TasksPage() {
   const qc = useQueryClient();
   const [adding,             setAdding]             = useState(null);
   const [error,              setError]              = useState(null);
-  const [planningTask,       setPlanningTask]       = useState(null); // task awaiting planning modal
+  const [planningTask,       setPlanningTask]       = useState(null);
   const [selectedProjectId,  setSelectedProjectId]  = useState(null);
+  const [detailTaskId,       setDetailTaskId]       = useState(null);
 
   const taskParams = selectedProjectId ? { project_id: selectedProjectId } : {};
 
@@ -220,6 +222,7 @@ export default function TasksPage() {
                                 task={task}
                                 isDragging={snapshot.isDragging}
                                 onPlan={() => setPlanningTask(task)}
+                                onClick={() => setDetailTaskId(task.id)}
                                 project={task.project_id ? projectMap[task.project_id] : null}
                               />
                             </div>
@@ -248,6 +251,13 @@ export default function TasksPage() {
           onClose={() => setPlanningTask(null)}
         />
       )}
+
+      {/* Task detail dialog */}
+      <TaskDetailDialog
+        taskId={detailTaskId}
+        open={!!detailTaskId}
+        onClose={() => { setDetailTaskId(null); qc.invalidateQueries({ queryKey: ["tasks"] }); }}
+      />
     </div>
   );
 }
@@ -353,14 +363,16 @@ function AddCardForm({ onSave, onCancel, saving, projects }) {
 
 // ── Task card ─────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, isDragging, onPlan, project }) {
+function TaskCard({ task, isDragging, onPlan, onClick, project }) {
   const taskAssignees = (task.assignees?.length ? task.assignees : (task.assignee ? [task.assignee] : [])).map(a => getAssignee(a));
   const agentStatusColor = AGENT_STATUS_COLORS[task.agent_status] || "text-gray-600";
   const hasAgent = task.openclaw_agent_id;
 
   return (
-    <div className={cn(
-      "bg-gray-800 border rounded-md p-3 transition-all relative",
+    <div
+      onClick={onClick}
+      className={cn(
+      "bg-gray-800 border rounded-md p-3 transition-all relative cursor-pointer",
       isDragging
         ? "border-orange-500/50 shadow-lg shadow-orange-500/10 rotate-1 scale-[1.02]"
         : "border-gray-700 hover:border-gray-600"

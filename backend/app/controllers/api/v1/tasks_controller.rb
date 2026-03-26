@@ -1,7 +1,7 @@
 module Api
   module V1
     class TasksController < BaseController
-      before_action :set_task, only: [:show, :update, :destroy, :move]
+      before_action :set_task, only: [:show, :update, :destroy, :move, :approve]
 
       def index
         tasks = Task.ordered
@@ -11,6 +11,42 @@ module Api
       end
 
       def show
+        render json: @task.as_json.merge(
+          notes: @task.task_notes.ordered.as_json,
+          attachments: @task.task_attachments.order(created_at: :desc).as_json
+        )
+      end
+
+      # POST /tasks/:id/approve — Jose-only review approval
+      def approve
+        unless @task.status == "review"
+          return render json: { error: "Task must be in Review to approve" }, status: :unprocessable_entity
+        end
+
+        @task.update!(
+          status: "done",
+          approved_by: params[:approved_by] || "jose",
+          approved_at: Time.current
+        )
+
+        # Optionally add a note
+        if params[:note].present?
+          @task.task_notes.create!(author: params[:approved_by] || "jose", body: params[:note])
+        end
+
+        ActionCable.server.broadcast("task_updates", {
+          event: "task_approved",
+          task_id: @task.id,
+          task_title: @task.title,
+          approved_by: @task.approved_by
+        })
+
+        ::EventStore.emit(
+          type: "task_approved",
+          message: "Task \"#{@task.title}\" approved by #{@task.approved_by} and moved to Done",
+          metadata: { task_id: @task.id, project_id: @task.project_id }
+        )
+
         render json: @task
       end
 
@@ -60,6 +96,16 @@ module Api
       def move
         new_status = params[:column] || params[:status]
         old_status = @task.status
+        moved_by = params[:moved_by].to_s.downcase
+
+        # Review gate: only Jose can move tasks from Review to Done.
+        # Crabby / agents must use the /approve endpoint instead.
+        if old_status == "review" && new_status == "done" && moved_by != "jose"
+          return render json: {
+            error: "Tasks in Review require Jose's approval to move to Done. Use the Approve action."
+          }, status: :forbidden
+        end
+
         @task.update!(status: new_status, position: params[:position] || 0)
 
         # Broadcast to Action Cable so the UI refreshes instantly
