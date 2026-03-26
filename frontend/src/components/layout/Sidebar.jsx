@@ -5,7 +5,7 @@ import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
   Bot, CalendarDays, BarChart2, Settings,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
-  WifiOff, Wifi, Loader, BookKey, Briefcase, Pencil,
+  WifiOff, Wifi, Loader, BookKey, Briefcase, Pencil, ClipboardList,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { dashboardApi } from "../../api/dashboard";
@@ -27,6 +27,7 @@ export const NAV_ITEMS = [
   { id: "security",       to: "/security",        icon: Shield,            label: "Security"          },
   { id: "feedback",       to: "/feedback",        icon: MessageSquarePlus, label: "Feedback"          },
   { id: "ops-notes",      to: "/ops-notes",       icon: BookKey,           label: "Claw Cheatsheet"   },
+  { id: "todos",          to: "/todos",           icon: ClipboardList,     label: "My To-Dos"         },
   { id: "settings",       to: "/settings",        icon: Settings,          label: "Settings"          },
 ];
 
