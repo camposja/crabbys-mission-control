@@ -18,16 +18,11 @@ module Openclaw
       File.join(WORKSPACE_ROOT, "agents")
     end
 
-    # Additional project docs exposed in the Workspace tab
-    EXTRA_WORKSPACE_PATHS = %w[
-      projects/qr-doorbell/MVP.md
-    ].freeze
-
-    # List all markdown/text docs in the workspace (non-recursive top level + extras)
+    # List all markdown/text docs in the workspace (non-recursive top level only)
     def self.list_workspace_docs
       return [] unless Dir.exist?(workspace_path)
 
-      # Top-level workspace files
+      # Top-level workspace files only (no subdirectories)
       files = Dir.glob(File.join(workspace_path, "*.{md,txt,json}")).map do |path|
         stat = File.stat(path)
         {
@@ -39,21 +34,33 @@ module Openclaw
         }
       end
 
-      # Extra project docs
-      EXTRA_WORKSPACE_PATHS.each do |rel|
-        full = File.join(workspace_path, rel)
-        next unless File.exist?(full)
-        stat = File.stat(full)
-        files << {
-          name:      rel,
-          path:      full,
-          size:      stat.size,
-          modified:  stat.mtime.iso8601,
-          type:      File.extname(full).delete(".")
-        }
+      files.sort_by { |f| f[:modified] }.reverse
+    end
+
+    # List project docs for the "Mission Control (DB)" tab.
+    # Organizes files into virtual folders (e.g., QR Doorbell).
+    def self.list_database_filesystem_docs
+      return [] unless Dir.exist?(workspace_path)
+
+      docs = []
+
+      # QR Doorbell project files
+      qr_doorbell_dir = File.join(workspace_path, "projects", "qr-doorbell")
+      if Dir.exist?(qr_doorbell_dir)
+        Dir.glob(File.join(qr_doorbell_dir, "*.{md,txt}")).each do |path|
+          stat = File.stat(path)
+          docs << {
+            name:     "qr-doorbell/#{File.basename(path)}",
+            path:     path,
+            folder:   "qr-doorbell",
+            size:     stat.size,
+            modified: stat.mtime.iso8601,
+            type:     File.extname(path).delete(".")
+          }
+        end
       end
 
-      files.sort_by { |f| f[:modified] }.reverse
+      docs.sort_by { |f| f[:modified] }.reverse
     end
 
     # ── Resumes ──────────────────────────────────────────────────────────

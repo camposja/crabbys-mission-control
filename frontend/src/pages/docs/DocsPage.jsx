@@ -16,7 +16,8 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
   });
 
   const [draft, setDraft] = useState(null);
-  const content = draft ?? (data?.content || "");
+  // If doc has content directly (database doc), use it; otherwise use fetched data
+  const content = draft ?? (doc.content || data?.content || "");
 
   const save = useMutation({
     mutationFn: () => documentsApi.updateContent(doc.path, content),
@@ -27,8 +28,8 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
     },
   });
 
-  const isMarkdown = doc.path?.endsWith(".md") || doc.name?.endsWith(".md");
-  const isReadOnly = READ_ONLY_EXTENSIONS.test(doc.path || doc.name || "");
+  const isMarkdown = doc.path?.endsWith(".md") || doc.name?.endsWith(".md") || doc.title?.endsWith(".md");
+  const isReadOnly = !doc.path || READ_ONLY_EXTENSIONS.test(doc.path || doc.name || "");
 
   return (
     <div className="fixed inset-y-0 right-0 w-[560px] bg-gray-900 border-l border-gray-800 z-40 flex flex-col shadow-2xl">
@@ -87,15 +88,17 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
       </div>
 
       {/* Path */}
-      <div className="px-5 py-2 border-b border-gray-800/50 shrink-0 flex items-center gap-2">
-        <p className="text-xs text-gray-600 font-mono truncate flex-1">{doc.path}</p>
-        {isReadOnly && (
-          <span className="text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded shrink-0">read-only</span>
-        )}
-      </div>
+      {doc.path && (
+        <div className="px-5 py-2 border-b border-gray-800/50 shrink-0 flex items-center gap-2">
+          <p className="text-xs text-gray-600 font-mono truncate flex-1">{doc.path}</p>
+          {isReadOnly && (
+            <span className="text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded shrink-0">read-only</span>
+          )}
+        </div>
+      )}
 
       {/* Content */}
-      {isLoading ? (
+      {isLoading && !doc.content ? (
         <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">Loading…</div>
       ) : draft !== null ? (
         <textarea
@@ -360,12 +363,12 @@ function DocsInner() {
               <FolderOpen size={13} /> Workspace ({workspace.length})
             </button>
             <button
-              onClick={() => setActiveTab("database")}
+              onClick={() => setActiveTab("qr-doorbell")}
               className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
-                activeTab === "database" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
+                activeTab === "qr-doorbell" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
               }`}
             >
-              <Database size={13} /> Database ({database.length})
+              <Database size={13} /> Mission Control (DB) ({database.length})
             </button>
             <button
               onClick={() => setActiveTab("resumes")}
@@ -421,28 +424,87 @@ function DocsInner() {
             ) : (
               <WorkspaceDocList docs={workspace} selected={selected} onSelect={setSelected} />
             )
-          ) : (
+          ) : activeTab === "qr-doorbell" ? (
             database.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-600">
                 <Database size={36} className="mb-3 opacity-40" />
-                <p className="text-sm">No database documents yet</p>
+                <p className="text-sm">No Mission Control documents yet</p>
               </div>
             ) : (
               <div className="space-y-0.5">
-                {database.map((doc, i) => (
-                  <div key={doc.id || i} className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-gray-900 border border-gray-800">
-                    <FileText size={13} className="text-gray-600 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">{doc.title || doc.filename || `Document ${doc.id}`}</p>
-                      {doc.document_type && (
-                        <p className="text-xs text-gray-600">{doc.document_type}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {/* Group by folder */}
+                {(() => {
+                  const folders = {};
+                  const topLevel = [];
+                  
+                  database.forEach((doc) => {
+                    if (doc.folder) {
+                      if (!folders[doc.folder]) folders[doc.folder] = [];
+                      folders[doc.folder].push(doc);
+                    } else {
+                      topLevel.push(doc);
+                    }
+                  });
+
+                  return (
+                    <>
+                      {Object.keys(folders).sort().map((folderName) => (
+                        <div key={folderName} className="mb-3">
+                          <div className="flex items-center gap-2 px-3 py-1.5 mb-1">
+                            <FolderOpen size={13} className="text-orange-400" />
+                            <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">{folderName}</p>
+                          </div>
+                          {folders[folderName].map((doc, i) => (
+                            <button
+                              key={doc.id || doc.path || i}
+                              onClick={() => setSelected(doc.path ? doc : { ...doc, path: null, name: doc.title || doc.filename })}
+                              className={`w-full flex items-center gap-3 px-3 pl-8 py-2.5 rounded-md transition-colors text-left ${
+                                selected?.path === doc.path || selected?.id === doc.id
+                                  ? "bg-orange-500/10 border border-orange-500/30"
+                                  : "hover:bg-gray-800 border border-transparent"
+                              }`}
+                            >
+                              <FileText size={13} className="text-gray-600 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white font-medium truncate">{doc.name?.split('/').pop() || doc.title || doc.filename}</p>
+                                {doc.size && (
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    {doc.size < 1024 ? `${doc.size}B` : `${(doc.size / 1024).toFixed(1)}KB`}
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                      
+                      {topLevel.map((doc, i) => (
+                        <button
+                          key={doc.id || i}
+                          onClick={() => setSelected({ ...doc, path: null, name: doc.title || doc.filename })}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left ${
+                            selected?.id === doc.id
+                              ? "bg-orange-500/10 border border-orange-500/30"
+                              : "bg-gray-900 border border-gray-800 hover:border-gray-700"
+                          }`}
+                        >
+                          <FileText size={13} className="text-gray-600 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white font-medium truncate">{doc.title || doc.filename || `Document ${doc.id}`}</p>
+                            {doc.content && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {doc.content.substring(0, 150)}...
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  );
+                })()}
               </div>
             )
-          )}
+          ) : null}
         </div>
       </div>
 

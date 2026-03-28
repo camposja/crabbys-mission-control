@@ -888,6 +888,8 @@ function ActivityRow({ event }) {
 // ── Documents Tab ────────────────────────────────────────────────────────────
 
 function DocumentsTab({ projectId }) {
+  const [selectedDoc, setSelectedDoc] = useState(null);
+  
   const { data: documents, isLoading, isError } = useQuery({
     queryKey: ["documents", { project_id: projectId }],
     queryFn: () => documentsApi.getAll({ project_id: projectId }),
@@ -918,24 +920,61 @@ function DocumentsTab({ projectId }) {
   }
 
   return (
-    <div className="space-y-2">
-      {docs.map((doc, i) => (
-        <div
-          key={doc.id || doc.path || i}
-          className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-3 hover:border-gray-600 transition-colors"
-        >
-          <FileText size={16} className="text-gray-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-white truncate">{doc.filename || doc.title || doc.path || "Untitled"}</p>
-            {doc.content_type && (
-              <p className="text-xs text-gray-500 mt-0.5">{doc.content_type}</p>
+    <div className="space-y-4">
+      {/* Document list */}
+      <div className="space-y-2">
+        {docs.map((doc, i) => (
+          <div
+            key={doc.id || doc.path || i}
+            className={cn(
+              "bg-gray-800 border rounded-lg px-4 py-3 cursor-pointer transition-colors",
+              selectedDoc?.id === doc.id
+                ? "border-orange-500 bg-gray-800"
+                : "border-gray-700 hover:border-gray-600"
             )}
+            onClick={() => setSelectedDoc(doc)}
+          >
+            <div className="flex items-center gap-3">
+              <FileText size={16} className="text-gray-500 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white font-medium truncate">
+                  {doc.title || doc.filename || doc.path || "Untitled"}
+                </p>
+                {doc.content && (
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                    {doc.content.substring(0, 150)}...
+                  </p>
+                )}
+              </div>
+              <span className="text-xs text-gray-500 shrink-0">
+                {relativeTime(doc.updated_at || doc.created_at)}
+              </span>
+            </div>
           </div>
-          <span className="text-xs text-gray-500 shrink-0">
-            {relativeTime(doc.updated_at || doc.created_at)}
-          </span>
+        ))}
+      </div>
+
+      {/* Document preview panel */}
+      {selectedDoc && (
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">
+              {selectedDoc.title || selectedDoc.filename || "Document"}
+            </h3>
+            <button
+              onClick={() => setSelectedDoc(null)}
+              className="text-gray-500 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <div className="prose prose-invert prose-sm max-w-none">
+            <pre className="text-xs text-gray-300 whitespace-pre-wrap bg-gray-950 p-4 rounded border border-gray-800 overflow-x-auto max-h-[600px]">
+              {selectedDoc.content || "No content available"}
+            </pre>
+          </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
