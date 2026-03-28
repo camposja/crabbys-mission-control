@@ -18,9 +18,15 @@ module Api
           }
         else
           workspace_docs = ::Openclaw::WorkspaceReader.list_workspace_docs
+          database_fs_docs = ::Openclaw::WorkspaceReader.list_database_filesystem_docs
+          
+          # Filter out database docs that duplicate filesystem docs
+          fs_titles = database_fs_docs.map { |doc| doc[:name]&.split('/')&.last }.compact
+          db_docs_filtered = db_docs.where.not(title: fs_titles)
+          
           render json: {
             workspace: workspace_docs,
-            database:  db_docs.limit(50).as_json
+            database:  (db_docs_filtered.limit(50).as_json + database_fs_docs)
           }
         end
       end
