@@ -21,12 +21,19 @@ module Api
           database_fs_docs = ::Openclaw::WorkspaceReader.list_database_filesystem_docs
           
           # Filter out database docs that duplicate filesystem docs
-          fs_titles = database_fs_docs.map { |doc| doc[:name]&.split('/')&.last }.compact
-          db_docs_filtered = db_docs.where.not(title: fs_titles)
+          # Match by filename (case-insensitive, ignore extensions and suffixes after —)
+          fs_basenames = database_fs_docs.map { |doc| 
+            doc[:name]&.split('/')&.last&.split('.')&.first&.upcase 
+          }.compact
+          
+          db_docs_filtered = db_docs.reject { |doc|
+            title_base = doc.title&.split('—')&.first&.strip&.upcase
+            fs_basenames.include?(title_base)
+          }
           
           render json: {
             workspace: workspace_docs,
-            database:  (db_docs_filtered.limit(50).as_json + database_fs_docs)
+            database:  (db_docs_filtered.as_json + database_fs_docs)
           }
         end
       end

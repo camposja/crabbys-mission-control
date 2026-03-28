@@ -39,6 +39,7 @@ module Openclaw
 
     # List project docs for the "Mission Control (DB)" tab.
     # Organizes files into virtual folders (e.g., QR Doorbell).
+    # Includes content preview snippets for better UX.
     def self.list_database_filesystem_docs
       return [] unless Dir.exist?(workspace_path)
 
@@ -49,13 +50,22 @@ module Openclaw
       if Dir.exist?(qr_doorbell_dir)
         Dir.glob(File.join(qr_doorbell_dir, "*.{md,txt}")).each do |path|
           stat = File.stat(path)
+          
+          # Read first 300 chars for preview (skip empty files)
+          content_preview = begin
+            File.read(path, 300).gsub(/\s+/, " ").strip
+          rescue
+            nil
+          end
+          
           docs << {
             name:     "qr-doorbell/#{File.basename(path)}",
             path:     path,
             folder:   "qr-doorbell",
             size:     stat.size,
             modified: stat.mtime.iso8601,
-            type:     File.extname(path).delete(".")
+            type:     File.extname(path).delete("."),
+            content:  content_preview # Add preview for consistency with DB docs
           }
         end
       end

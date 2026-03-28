@@ -461,15 +461,15 @@ function DocsInner() {
                               className={`w-full flex items-center gap-3 px-3 pl-8 py-2.5 rounded-md transition-colors text-left ${
                                 selected?.path === doc.path || selected?.id === doc.id
                                   ? "bg-orange-500/10 border border-orange-500/30"
-                                  : "hover:bg-gray-800 border border-transparent"
+                                  : "bg-gray-900 border border-gray-800 hover:border-gray-700"
                               }`}
                             >
                               <FileText size={13} className="text-gray-600 shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-white font-medium truncate">{doc.name?.split('/').pop() || doc.title || doc.filename}</p>
-                                {doc.size && (
-                                  <p className="text-xs text-gray-600 mt-0.5">
-                                    {doc.size < 1024 ? `${doc.size}B` : `${(doc.size / 1024).toFixed(1)}KB`}
+                                {doc.content && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                    {doc.content.substring(0, 150)}...
                                   </p>
                                 )}
                               </div>
