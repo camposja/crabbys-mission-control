@@ -84,7 +84,7 @@ export default function TodosPage() {
   const completed = todos.filter(t => t.done);
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">My To-Dos</h1>
@@ -198,14 +198,14 @@ export default function TodosPage() {
                         </span>
                         <button
                           onClick={() => unarchiveMutation.mutate(todo.id)}
-                          className="text-gray-800 hover:text-gray-400 transition-colors opacity-0 group-hover:opacity-100"
+                          className="text-gray-800 hover:text-gray-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
                           title="Restore"
                         >
                           <ArchiveRestore size={13} />
                         </button>
                         <button
                           onClick={() => deleteMutation.mutate(todo.id)}
-                          className="text-gray-800 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                          className="text-gray-800 hover:text-red-400 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
                           title="Delete permanently"
                         >
                           <Trash2 size={13} />
@@ -265,7 +265,7 @@ function TodoRow({ todo, onToggle, onArchive, onDelete, onMoveUp, onMoveDown }) 
           </>
         )}
         {/* Archive + delete — visible on hover */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {todo.done && onArchive && (
             <button onClick={onArchive} className="text-gray-700 hover:text-gray-400 transition-colors" title="Archive">
               <Archive size={14} />

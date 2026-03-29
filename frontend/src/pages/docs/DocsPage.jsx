@@ -32,7 +32,7 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
   const isReadOnly = !doc.path || READ_ONLY_EXTENSIONS.test(doc.path || doc.name || "");
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[560px] bg-gray-900 border-l border-gray-800 z-40 flex flex-col shadow-2xl">
+    <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-auto w-full md:w-[560px] bg-gray-900 border-l border-gray-800 z-40 flex flex-col shadow-2xl">
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -320,9 +320,9 @@ function DocsInner() {
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all ${selected ? "mr-[560px]" : ""}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all ${selected ? "hidden md:flex md:mr-[560px]" : ""}`}>
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-800 shrink-0">
+        <div className="px-4 pt-4 pb-3 md:px-6 md:pt-6 md:pb-4 border-b border-gray-800 shrink-0">
           <div className="flex items-center justify-between mb-1">
             <h1 className="text-2xl font-bold text-white">Docs</h1>
             <UploadButton onUploaded={() => setActiveTab("workspace")} />
@@ -351,7 +351,7 @@ function DocsInner() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4">
           {/* Tabs */}
           <div className="flex gap-4 mb-4 border-b border-gray-800 pb-3">
             <button
@@ -461,7 +461,7 @@ function DocsInner() {
                               className={`w-full flex items-center gap-3 px-3 pl-8 py-2.5 rounded-md transition-colors text-left ${
                                 selected?.path === doc.path || selected?.id === doc.id
                                   ? "bg-orange-500/10 border border-orange-500/30"
-                                  : "bg-gray-900 border border-gray-800 hover:border-gray-700"
+                                  : "hover:bg-gray-800 border border-transparent"
                               }`}
                             >
                               <FileText size={13} className="text-gray-600 shrink-0" />
@@ -485,7 +485,7 @@ function DocsInner() {
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left ${
                             selected?.id === doc.id
                               ? "bg-orange-500/10 border border-orange-500/30"
-                              : "bg-gray-900 border border-gray-800 hover:border-gray-700"
+                              : "hover:bg-gray-800 border border-transparent"
                           }`}
                         >
                           <FileText size={13} className="text-gray-600 shrink-0" />

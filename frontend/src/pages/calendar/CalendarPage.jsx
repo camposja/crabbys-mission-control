@@ -556,7 +556,7 @@ function CalendarInner() {
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-gray-800">
+      <div className="px-4 pt-4 pb-3 md:px-6 md:pt-6 md:pb-4 border-b border-gray-800">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white">Calendar</h1>
@@ -629,7 +629,7 @@ function CalendarInner() {
         </div>
       </div>
 
-      <div className="px-6 py-6">
+      <div className="px-4 py-4 md:px-6 md:py-6">
         <SummaryStrip summary={summary} isLoading={loadingSummary} />
         {tab === "events" && (
           <EventsTab projectFilter={projectFilter} setProjectFilter={setProjectFilter} projects={projects} />

@@ -117,7 +117,7 @@ export default function TasksPage() {
   const allTasks = Object.values(tasksByStatus).flat();
 
   return (
-    <div className="p-6 h-screen flex flex-col">
+    <div className="p-4 md:p-6 min-h-[100dvh] md:h-screen flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 shrink-0">
         <div>
@@ -166,11 +166,11 @@ export default function TasksPage() {
 
       {/* Kanban board */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-5 gap-4 flex-1 min-h-0">
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 md:pb-0 md:grid md:grid-cols-5 flex-1 min-h-0">
           {COLUMNS.map(col => {
             const cards = tasksByStatus[col.id] || [];
             return (
-              <div key={col.id} className="bg-gray-900 border border-gray-800 rounded-lg flex flex-col min-h-0">
+              <div key={col.id} className="bg-gray-900 border border-gray-800 rounded-lg flex flex-col min-h-0 min-w-[85vw] snap-center md:min-w-0">
 
                 {/* Column header */}
                 <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
