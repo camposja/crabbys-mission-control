@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
   Bot, CalendarDays, BarChart2, Settings,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
   WifiOff, Wifi, Loader, BookKey, Briefcase, Pencil, ClipboardList,
+  Menu, X,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { dashboardApi } from "../../api/dashboard";
@@ -107,9 +108,33 @@ function loadNavOrder() {
 export default function Sidebar() {
   const [navOrder, setNavOrder] = useState(loadNavOrder);
   const [isReorderOpen, setIsReorderOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile nav on route change
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
   return (
-    <aside className="w-56 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
+    <>
+      {/* Mobile hamburger header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3">
+        <button onClick={() => setMobileOpen(v => !v)} className="text-gray-400 hover:text-white p-1 -ml-1">
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        <span className="text-lg">🦀</span>
+        <p className="text-sm font-bold text-white">Mission Control</p>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} />
+      )}
+
+      <aside className={cn(
+        "w-56 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col",
+        "fixed md:relative z-40 h-full transition-transform duration-200",
+        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-800">
         <div className="flex items-center gap-2">
@@ -172,5 +197,6 @@ export default function Sidebar() {
         defaultItems={NAV_ITEMS}
       />
     </aside>
+    </>
   );
 }
