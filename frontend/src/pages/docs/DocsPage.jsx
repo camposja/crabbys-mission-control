@@ -9,15 +9,16 @@ const READ_ONLY_EXTENSIONS = /\.(docx|pdf)$/i;
 function DocViewer({ doc, onClose, allowDownload = false }) {
   const qc = useQueryClient();
 
+  // DB documents already carry their content; only fetch for file-based docs
+  const isDbDoc = !!doc.id && !doc.path;
   const { data, isLoading } = useQuery({
     queryKey: ["doc-content", doc.path],
     queryFn:  () => documentsApi.getContent(doc.path),
-    enabled:  !!doc.path,
+    enabled:  !!doc.path && !isDbDoc,
   });
 
   const [draft, setDraft] = useState(null);
-  // If doc has content directly (database doc), use it; otherwise use fetched data
-  const content = draft ?? (doc.content || data?.content || "");
+  const content = draft ?? (isDbDoc ? (doc.content || "") : (data?.content || ""));
 
   const save = useMutation({
     mutationFn: () => documentsApi.updateContent(doc.path, content),
@@ -87,18 +88,18 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
         </div>
       </div>
 
-      {/* Path */}
-      {doc.path && (
-        <div className="px-5 py-2 border-b border-gray-800/50 shrink-0 flex items-center gap-2">
-          <p className="text-xs text-gray-600 font-mono truncate flex-1">{doc.path}</p>
-          {isReadOnly && (
-            <span className="text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded shrink-0">read-only</span>
-          )}
-        </div>
-      )}
+      {/* Path / type info */}
+      <div className="px-5 py-2 border-b border-gray-800/50 shrink-0 flex items-center gap-2">
+        <p className="text-xs text-gray-600 font-mono truncate flex-1">
+          {doc.path || (doc.doc_type ? `DB · ${doc.doc_type}` : "DB document")}
+        </p>
+        {(isReadOnly || isDbDoc) && (
+          <span className="text-[10px] text-gray-600 bg-gray-800 px-1.5 py-0.5 rounded shrink-0">read-only</span>
+        )}
+      </div>
 
       {/* Content */}
-      {isLoading && !doc.content ? (
+      {isLoading && !isDbDoc ? (
         <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">Loading…</div>
       ) : draft !== null ? (
         <textarea
