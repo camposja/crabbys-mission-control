@@ -145,6 +145,9 @@ Rails.application.routes.draw do
         end
       end
 
+      # Links
+      resources :links, only: [:index, :create, :destroy]
+
       # Ops notes / command cheatsheet
       resources :ops_notes
 

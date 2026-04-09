@@ -13,7 +13,8 @@ module Api
       def show
         render json: @task.as_json.merge(
           notes: @task.task_notes.ordered.as_json,
-          attachments: @task.task_attachments.order(created_at: :desc).as_json
+          attachments: @task.task_attachments.order(created_at: :desc).as_json,
+          links: @task.links.recent_first.as_json
         )
       end
 
