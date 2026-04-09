@@ -4,6 +4,7 @@ import {
   X, Send, CheckCircle, FileText, Paperclip, Trash2, Upload,
   Clock, User, Bot, ShieldCheck,
 } from "lucide-react";
+import LinksPanel from "../links/LinksPanel";
 import { tasksApi } from "../../api/tasks";
 import { taskNotesApi, taskAttachmentsApi, taskApproveApi } from "../../api/taskNotes";
 import { cn } from "../../lib/utils";
@@ -84,7 +85,7 @@ export default function TaskDetailDialog({ taskId, open, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-3xl mx-4 md:mx-4 flex flex-col max-h-[95vh] md:max-h-[90vh] m-2 md:m-0" onClick={e => e.stopPropagation()}>
+      <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         {isLoading ? (
@@ -193,6 +194,11 @@ export default function TaskDetailDialog({ taskId, open, onClose }) {
                     <Send size={14} />
                   </button>
                 </div>
+              </div>
+
+              {/* Links */}
+              <div>
+                <LinksPanel projectId={task.project_id} taskId={task.id} title="Task Links" />
               </div>
 
               {/* Attachments */}

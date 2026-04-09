@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_25_231700) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_09_174000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -113,6 +113,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_231700) do
     t.index ["source", "external_uid"], name: "index_job_applications_on_source_and_external_uid", unique: true
     t.index ["source"], name: "index_job_applications_on_source"
     t.index ["status"], name: "index_job_applications_on_status"
+  end
+
+  create_table "links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.bigint "project_id", null: false
+    t.string "source_type", default: "other", null: false
+    t.bigint "task_id"
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["created_at"], name: "index_links_on_created_at"
+    t.index ["project_id"], name: "index_links_on_project_id"
+    t.index ["source_type"], name: "index_links_on_source_type"
+    t.index ["task_id"], name: "index_links_on_task_id"
   end
 
   create_table "memories", force: :cascade do |t|
@@ -374,6 +389,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_25_231700) do
   add_foreign_key "calendar_events", "tasks", on_delete: :nullify
   add_foreign_key "cron_jobs", "projects", on_delete: :nullify
   add_foreign_key "cron_jobs", "tasks", on_delete: :nullify
+  add_foreign_key "links", "projects"
+  add_foreign_key "links", "tasks", on_delete: :nullify
   add_foreign_key "memories", "projects", on_delete: :nullify
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

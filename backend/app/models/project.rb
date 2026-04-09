@@ -6,6 +6,7 @@ class Project < ApplicationRecord
   has_many :tasks, dependent: :nullify
   has_many :calendar_events, dependent: :nullify
   has_many :cron_jobs, dependent: :nullify
+  has_many :links, dependent: :destroy
 
   validates :name,   presence: true
   validates :status, inclusion: { in: STATUSES }

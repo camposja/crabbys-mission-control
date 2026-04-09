@@ -7,6 +7,7 @@ class Task < ApplicationRecord
   has_many   :calendar_events, dependent: :nullify
   has_many   :task_notes, dependent: :destroy
   has_many   :task_attachments, dependent: :destroy
+  has_many   :links, dependent: :nullify
 
   validates :title, presence: true
   validates :priority, inclusion: { in: PRIORITIES }, allow_nil: true
