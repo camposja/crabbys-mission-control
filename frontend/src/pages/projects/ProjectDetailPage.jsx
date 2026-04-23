@@ -31,6 +31,7 @@ import EventRow from "../../components/calendar/EventRow";
 import CalendarEventDetail from "../../components/calendar/CalendarEventDetail";
 import CronJobDetail from "../../components/calendar/CronJobDetail";
 import LinksPanel from "../../components/links/LinksPanel";
+import TaskDetailDialog from "../../components/tasks/TaskDetailDialog";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -429,6 +430,7 @@ function TasksTab({ projectId }) {
   const qc = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState(null);
+  const [detailTaskId, setDetailTaskId] = useState(null);
 
   const { data: tasksData, isLoading, isError } = useQuery({
     queryKey: ["tasks", { project_id: projectId }],
@@ -509,20 +511,30 @@ function TasksTab({ projectId }) {
       {tasks.length > 0 && (
         <div className="space-y-2">
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} />
+            <TaskRow key={task.id} task={task} onOpen={() => setDetailTaskId(task.id)} />
           ))}
         </div>
       )}
+
+      {/* Task detail dialog */}
+      <TaskDetailDialog
+        taskId={detailTaskId}
+        open={!!detailTaskId}
+        onClose={() => { setDetailTaskId(null); qc.invalidateQueries({ queryKey: ["tasks"] }); }}
+      />
     </div>
   );
 }
 
-function TaskRow({ task }) {
+function TaskRow({ task, onOpen }) {
   const statusMeta = TASK_STATUS_META[task.status] || TASK_STATUS_META.backlog;
   const assignee = task.assignee ? getAssignee(task.assignee) : null;
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-3 hover:border-gray-600 transition-colors">
+    <div
+      onClick={onOpen}
+      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 flex items-center gap-3 hover:border-gray-600 transition-colors cursor-pointer"
+    >
       {/* Status dot */}
       <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", statusMeta.dot)} />
 
