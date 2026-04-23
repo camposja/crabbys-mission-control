@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   X, Send, CheckCircle, FileText, Paperclip, Trash2, Upload,
-  Clock, User, Bot, ShieldCheck,
+  Clock, User, Bot, ShieldCheck, FolderKanban,
 } from "lucide-react";
 import LinksPanel from "../links/LinksPanel";
 import { tasksApi } from "../../api/tasks";
+import { projectsApi } from "../../api/projects";
 import { taskNotesApi, taskAttachmentsApi, taskApproveApi } from "../../api/taskNotes";
 import { cn } from "../../lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -31,8 +33,9 @@ function relativeTime(iso) {
   return new Date(iso).toLocaleDateString();
 }
 
-export default function TaskDetailDialog({ taskId, open, onClose }) {
+export default function TaskDetailDialog({ taskId, open, onClose, showProjectLink = true }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [noteText, setNoteText] = useState("");
   const [approveNote, setApproveNote] = useState("");
   const [showAttachForm, setShowAttachForm] = useState(false);
@@ -44,6 +47,18 @@ export default function TaskDetailDialog({ taskId, open, onClose }) {
     queryFn: () => tasksApi.get(taskId),
     enabled: open && !!taskId,
   });
+
+  const { data: project } = useQuery({
+    queryKey: ["project", task?.project_id],
+    queryFn: () => projectsApi.get(task.project_id),
+    enabled: showProjectLink && open && !!task?.project_id,
+  });
+
+  const openProject = () => {
+    if (!task?.project_id) return;
+    onClose();
+    navigate(`/projects/${task.project_id}`);
+  };
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["task-detail", taskId] });
@@ -94,7 +109,20 @@ export default function TaskDetailDialog({ taskId, open, onClose }) {
           <>
             <div className="px-6 py-5 border-b border-gray-800 flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                {showProjectLink && task.project_id && (
+                  <button
+                    onClick={openProject}
+                    title={project?.name ? `Open ${project.name}` : "Open project"}
+                    className="group inline-flex items-center gap-2 mb-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 hover:border-orange-500/60 hover:bg-gray-800/70 transition-colors"
+                  >
+                    <FolderKanban size={14} className="text-gray-400 group-hover:text-orange-400 transition-colors" />
+                    <span className="text-sm text-gray-400">Project:</span>
+                    <span className="text-sm font-semibold text-white group-hover:text-orange-400 group-hover:underline transition-colors">
+                      {project?.name || "…"}
+                    </span>
+                  </button>
+                )}
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className={cn("text-xs px-2 py-0.5 rounded", STATUS_COLORS[task.status])}>
                     {STATUS_LABELS[task.status] || task.status}
                   </span>

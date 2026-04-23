@@ -516,11 +516,12 @@ function TasksTab({ projectId }) {
         </div>
       )}
 
-      {/* Task detail dialog */}
+      {/* Task detail dialog — hide project link since we're already on the project */}
       <TaskDetailDialog
         taskId={detailTaskId}
         open={!!detailTaskId}
         onClose={() => { setDetailTaskId(null); qc.invalidateQueries({ queryKey: ["tasks"] }); }}
+        showProjectLink={false}
       />
     </div>
   );
