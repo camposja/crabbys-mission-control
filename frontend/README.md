@@ -1,5 +1,12 @@
 # React + Vite
 
+> **Package manager: pnpm 11+ (supply-chain hardening).**
+> Use `pnpm install`, **not** `npm install`. This project is pinned to
+> `pnpm@11.1.3` via `packageManager` and configured in `pnpm-workspace.yaml` to:
+> enforce a 24h minimum release age, block exotic transitive dependencies, and
+> hard-fail any unreviewed dependency build/postinstall script. Run `pnpm dev`,
+> `pnpm build`, `pnpm lint`.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

@@ -17,7 +17,7 @@ development:
   heartbeat_check:
     class: HeartbeatCheckJob
     queue: default
-    schedule: every 5 minutes
+    schedule: every hour
 
   calendar_sync:
     class: CalendarSyncJob

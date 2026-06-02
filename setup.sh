@@ -82,7 +82,7 @@ echo ""
 echo "📦  Installing Node dependencies…"
 cd frontend
 
-mise exec -- npm install --silent
+mise exec -- pnpm install --silent
 
 if [ ! -f ".env.local" ]; then
   printf "VITE_API_URL=http://localhost:%s/api/v1\nVITE_CABLE_URL=ws://localhost:%s/cable\n" \
@@ -104,7 +104,7 @@ echo "  Terminal 1 (Rails API on port $RAILS_PORT):"
 echo "    cd backend && mise exec -- bundle exec rails server -p $RAILS_PORT"
 echo ""
 echo "  Terminal 2 (React frontend on port $REACT_PORT):"
-echo "    cd frontend && npm run dev"
+echo "    cd frontend && pnpm dev"
 echo ""
 echo "  Then open: http://localhost:$REACT_PORT"
 echo ""

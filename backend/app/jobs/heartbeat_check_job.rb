@@ -1,4 +1,4 @@
-# Runs on a schedule (every 5 minutes via recurring.yml).
+# Runs on a schedule (hourly via recurring.yml).
 # Checks the backlog for tasks assigned to Crabby and nudges OpenClaw
 # to pick them up — mirroring the heartbeat behaviour described in the Bootcamp.
 #
@@ -9,6 +9,8 @@ class HeartbeatCheckJob < ApplicationJob
   STUCK_THRESHOLD = 10.minutes
 
   def perform
+    return if recently_sent?
+
     crabby_tasks = Task.for_crabby.ordered
 
     if crabby_tasks.any?
@@ -16,7 +18,7 @@ class HeartbeatCheckJob < ApplicationJob
       stuck_tasks, fresh_tasks = crabby_tasks.partition do |t|
         t.agent_status.present? &&
           %w[spawn_requested running in_progress].include?(t.agent_status) &&
-          (Time.current - t.updated_at) > STUCK_THRESHOLD
+          (Time.current - (t.state_changed_at || t.updated_at)) > STUCK_THRESHOLD
       end
 
       webhook_url = "#{mc_url}/api/v1/openclaw/webhook"
@@ -28,7 +30,7 @@ class HeartbeatCheckJob < ApplicationJob
 
       if stuck_tasks.any?
         stuck_list = stuck_tasks.map do |t|
-          age = ((Time.current - t.updated_at) / 60).round
+          age = ((Time.current - (t.state_changed_at || t.updated_at)) / 60).round
           "- *** STUCK #{age}min *** [#{t.agent_status.upcase}] task_id=#{t.id} | #{t.title} (priority: #{t.priority || 'medium'})"
         end.join("\n")
 
@@ -98,5 +100,18 @@ class HeartbeatCheckJob < ApplicationJob
 
   def mc_url
     ENV.fetch("MISSION_CONTROL_URL", "http://localhost:3000")
+  end
+
+  def recently_sent?
+    last_sent_path = Rails.root.join("tmp", "heartbeat_check_last_sent_at")
+    if File.exist?(last_sent_path)
+      last_sent_at = Time.zone.parse(File.read(last_sent_path).strip)
+      return true if last_sent_at && last_sent_at > 55.minutes.ago
+    end
+    File.write(last_sent_path, Time.current.iso8601)
+    false
+  rescue StandardError => e
+    Rails.logger.warn("[HeartbeatCheckJob] Could not check heartbeat throttle: #{e.message}")
+    false
   end
 end

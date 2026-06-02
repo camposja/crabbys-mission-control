@@ -34,7 +34,7 @@ Then in two terminals:
 cd backend && bundle exec rails server -p 3000
 
 # Terminal 2
-cd frontend && npm run dev
+cd frontend && pnpm dev
 ```
 
 Open **http://localhost:5173**

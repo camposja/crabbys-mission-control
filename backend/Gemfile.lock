@@ -83,6 +83,7 @@ GEM
     base64 (0.3.0)
     bcrypt (3.1.22)
     bcrypt_pbkdf (1.1.2)
+    bcrypt_pbkdf (1.1.2-arm64-darwin)
     bigdecimal (4.0.1)
     blueprinter (1.2.1)
     bootsnap (1.23.0)
@@ -215,6 +216,8 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.2-arm-linux-musl)
       racc (~> 1.4)
+    nokogiri (1.19.2-arm64-darwin)
+      racc (~> 1.4)
     nokogiri (1.19.2-x86_64-linux-gnu)
       racc (~> 1.4)
     ostruct (0.6.3)
@@ -224,6 +227,7 @@ GEM
       racc
     pg (1.6.3)
     pg (1.6.3-aarch64-linux)
+    pg (1.6.3-arm64-darwin)
     pg (1.6.3-x86_64-linux)
     pgvector (0.3.3)
     pp (0.6.3)
@@ -374,6 +378,7 @@ GEM
     thor (1.5.0)
     thruster (0.1.19)
     thruster (0.1.19-aarch64-linux)
+    thruster (0.1.19-arm64-darwin)
     thruster (0.1.19-x86_64-linux)
     timeout (0.6.1)
     tsort (0.2.0)
@@ -399,6 +404,8 @@ PLATFORMS
   aarch64-linux-gnu
   arm-linux-gnu
   arm-linux-musl
+  arm64-darwin
+  arm64-darwin-25
   ruby
   x86_64-linux-gnu
 

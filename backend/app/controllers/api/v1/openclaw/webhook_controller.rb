@@ -86,7 +86,7 @@ module Api
         end
 
         def handle_agent_started(task, agent_id, message)
-          task.update_columns(openclaw_agent_id: agent_id, agent_status: "running")
+          update_task_agent_state(task, agent_id: agent_id, status: "running")
           ActionCable.server.broadcast("task_updates", {
             event:      "agent_started",
             task_id:    task.id,
@@ -108,20 +108,25 @@ module Api
             updates = { agent_status: "completed" }
             updates[:openclaw_agent_id] = agent_id if agent_id.present? && task.openclaw_agent_id.blank?
 
-            # Never auto-close recurring tasks
-            unless task.status == "recurring"
+            # Agents can complete work, but Jose approval is required for Done.
+            # Recurring tasks stay recurring; already-done tasks stay done.
+            if task.status == "done"
               updates[:status] = "done"
+            elsif task.status != "recurring"
+              updates[:status] = "review"
             end
 
+            updates[:state_changed_at] = Time.current
+            updates[:updated_at] = Time.current
             task.update_columns(updates)
 
-            if updates[:status] == "done"
+            if updates[:status].present? && updates[:status] != old_status
               ActionCable.server.broadcast("task_updates", {
                 event:      "task_moved",
                 task_id:    task.id,
                 task_title: task.title,
                 old_status: old_status,
-                new_status: "done",
+                new_status: updates[:status],
                 source:     "agent_webhook"
               })
             end
@@ -138,6 +143,8 @@ module Api
           if task
             updates = { agent_status: "failed" }
             updates[:openclaw_agent_id] = agent_id if agent_id.present? && task.openclaw_agent_id.blank?
+            updates[:state_changed_at] = Time.current
+            updates[:updated_at] = Time.current
             task.update_columns(updates)
           end
           EventStore.emit(
@@ -151,9 +158,7 @@ module Api
         def handle_agent_status(task, agent_id, status, message)
           return unless status.present?
           if task
-            updates = { agent_status: status }
-            updates[:openclaw_agent_id] = agent_id if agent_id.present? && task.openclaw_agent_id.blank?
-            task.update_columns(updates)
+            update_task_agent_state(task, agent_id: agent_id, status: status)
           end
           EventStore.emit(
             type:     "agent_status_updated",
@@ -185,6 +190,17 @@ module Api
             metadata: { task_id: task.id, project_id: task.project_id, old_status: old_status, new_status: column }
           )
         end
+        def update_task_agent_state(task, agent_id:, status:)
+          now = Time.current
+          updates = {
+            agent_status: status,
+            state_changed_at: now,
+            updated_at: now
+          }
+          updates[:openclaw_agent_id] = agent_id if agent_id.present? && task.openclaw_agent_id.blank?
+          task.update_columns(updates)
+        end
+
       end
     end
   end
