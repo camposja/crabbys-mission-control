@@ -145,8 +145,23 @@ Rails.application.routes.draw do
         end
       end
 
-      # Links
-      resources :links, only: [:index, :create, :destroy]
+      # Links (polymorphic-capable: project/task legacy + course/unit via linkable)
+      resources :links, only: [:index, :create, :update, :destroy]
+
+      # Courses — saved course materials, units, and reusable polymorphic notes/links
+      resources :courses do
+        resources :course_units, path: "units", only: [:index, :create, :update, :destroy] do
+          collection do
+            patch :reorder
+          end
+        end
+        collection do
+          post :bulk_upsert
+        end
+      end
+
+      # Generic reusable notes (polymorphic notable: Course, CourseUnit, ...)
+      resources :notes, only: [:index, :create, :update, :destroy]
 
       # Ops notes / command cheatsheet
       resources :ops_notes

@@ -93,4 +93,63 @@ RSpec.describe "Links API", type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  # ── Polymorphic course/unit links (new path) ────────────────────────────────
+  describe "polymorphic linkable links" do
+    let(:course) { create(:course) }
+
+    it "creates a course link with no project" do
+      payload = { link: { linkable_type: "Course", linkable_id: course.id, url: "https://github.com/x/y" } }
+      expect {
+        post "/api/v1/links", params: payload.to_json, headers: headers
+      }.to change(Link, :count).by(1)
+      expect(response).to have_http_status(:created)
+      body = JSON.parse(response.body)
+      expect(body["linkable_type"]).to eq("Course")
+      expect(body["source_type"]).to eq("github") # inference still works
+    end
+
+    it "filters by linkable_type + linkable_id" do
+      create(:link, linkable: course, project: nil)
+      create(:link, project: project) # legacy link, not returned
+      get "/api/v1/links", params: { linkable_type: "Course", linkable_id: course.id }, headers: headers
+      body = JSON.parse(response.body)
+      expect(body.length).to eq(1)
+      expect(body.first["linkable_id"]).to eq(course.id)
+    end
+
+    it "rejects a non-whitelisted linkable_type with 422" do
+      payload = { link: { linkable_type: "Secret", linkable_id: 1, url: "https://example.com" } }
+      post "/api/v1/links", params: payload.to_json, headers: headers
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "updates a course link" do
+      link = create(:link, linkable: course, project: nil)
+      patch "/api/v1/links/#{link.id}", params: { link: { title: "Renamed" } }.to_json, headers: headers
+      expect(response).to have_http_status(:ok)
+      expect(link.reload.title).to eq("Renamed")
+    end
+
+    it "ignores owner-changing params on update (owner is immutable)" do
+      link = create(:link, linkable: course, project: nil)
+      other_project = create(:project)
+      patch "/api/v1/links/#{link.id}",
+            params: { link: { title: "Edited", project_id: other_project.id, linkable_type: "CourseUnit", linkable_id: 999 } }.to_json,
+            headers: headers
+      expect(response).to have_http_status(:ok)
+      link.reload
+      expect(link.title).to eq("Edited")
+      expect(link.project_id).to be_nil
+      expect(link.linkable_type).to eq("Course")
+      expect(link.linkable_id).to eq(course.id)
+    end
+
+    it "persists metadata on a course link create" do
+      payload = { link: { linkable_type: "Course", linkable_id: course.id, url: "https://example.com", metadata: { "k" => "v" } } }
+      post "/api/v1/links", params: payload.to_json, headers: headers
+      expect(response).to have_http_status(:created)
+      expect(JSON.parse(response.body)["metadata"]).to eq("k" => "v")
+    end
+  end
 end

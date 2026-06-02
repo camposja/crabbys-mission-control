@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_09_174000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_02_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_174000) do
     t.index ["project_id"], name: "index_calendar_events_on_project_id"
     t.index ["status"], name: "index_calendar_events_on_status"
     t.index ["task_id"], name: "index_calendar_events_on_task_id"
+  end
+
+  create_table "course_units", force: :cascade do |t|
+    t.bigint "course_id", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "external_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "position"
+    t.string "status", default: "active", null: false
+    t.string "title", null: false
+    t.string "unit_type", default: "topic", null: false
+    t.datetime "updated_at", null: false
+    t.index ["course_id", "external_id"], name: "index_course_units_on_course_id_and_external_id", unique: true, where: "(external_id IS NOT NULL)"
+    t.index ["course_id", "position"], name: "index_course_units_on_course_id_and_position"
+    t.index ["course_id"], name: "index_course_units_on_course_id"
+  end
+
+  create_table "courses", force: :cascade do |t|
+    t.date "completed_on"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "diploma", default: false, null: false
+    t.text "diploma_notes"
+    t.string "external_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "provider"
+    t.date "started_on"
+    t.string "status", default: "active", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_id"], name: "index_courses_on_external_id", unique: true, where: "(external_id IS NOT NULL)"
+    t.index ["status"], name: "index_courses_on_status"
   end
 
   create_table "cron_jobs", force: :cascade do |t|
@@ -117,14 +150,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_174000) do
 
   create_table "links", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "external_id"
+    t.bigint "linkable_id"
+    t.string "linkable_type"
+    t.jsonb "metadata", default: {}, null: false
     t.text "notes"
-    t.bigint "project_id", null: false
+    t.bigint "project_id"
     t.string "source_type", default: "other", null: false
     t.bigint "task_id"
     t.string "title"
     t.datetime "updated_at", null: false
     t.string "url", null: false
     t.index ["created_at"], name: "index_links_on_created_at"
+    t.index ["linkable_type", "linkable_id", "external_id"], name: "index_links_on_owner_and_external_id", unique: true, where: "(external_id IS NOT NULL)"
+    t.index ["linkable_type", "linkable_id"], name: "index_links_on_linkable"
     t.index ["project_id"], name: "index_links_on_project_id"
     t.index ["source_type"], name: "index_links_on_source_type"
     t.index ["task_id"], name: "index_links_on_task_id"
@@ -148,6 +187,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_174000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "updated_by"
+  end
+
+  create_table "notes", force: :cascade do |t|
+    t.string "author"
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.string "external_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "notable_id", null: false
+    t.string "notable_type", null: false
+    t.string "note_type", null: false
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["notable_type", "notable_id", "external_id"], name: "index_notes_on_owner_and_external_id", unique: true, where: "(external_id IS NOT NULL)"
+    t.index ["notable_type", "notable_id"], name: "index_notes_on_notable"
+    t.index ["note_type"], name: "index_notes_on_note_type"
   end
 
   create_table "ops_notes", force: :cascade do |t|
@@ -387,6 +442,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_174000) do
   add_foreign_key "calendar_events", "cron_jobs", on_delete: :nullify
   add_foreign_key "calendar_events", "projects", on_delete: :nullify
   add_foreign_key "calendar_events", "tasks", on_delete: :nullify
+  add_foreign_key "course_units", "courses"
   add_foreign_key "cron_jobs", "projects", on_delete: :nullify
   add_foreign_key "cron_jobs", "tasks", on_delete: :nullify
   add_foreign_key "links", "projects"

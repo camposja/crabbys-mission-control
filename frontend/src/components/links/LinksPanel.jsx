@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Link2, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, Link2, Plus, Trash2, X, Pencil } from "lucide-react";
 import { linksApi } from "../../api/links";
 import { cn } from "../../lib/utils";
 
@@ -29,7 +29,18 @@ function formatSourceType(value) {
   return found ? found[1] : value || "Other";
 }
 
-export default function LinksPanel({ projectId, taskId = null, title = "Links" }) {
+/**
+ * Reusable links panel.
+ *
+ * Owner can be supplied two ways:
+ *  - `owner` prop (preferred):  { project_id } | { linkable_type, linkable_id }
+ *  - legacy props `projectId` / `taskId` (kept so existing Projects/Tasks
+ *    call sites work unchanged).
+ *
+ * The owner object is used verbatim as the query filter and the create payload
+ * base, so the same component serves project, task, course, and unit links.
+ */
+export default function LinksPanel({ owner: ownerProp, projectId, taskId = null, title = "Links" }) {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState(null);
@@ -37,41 +48,67 @@ export default function LinksPanel({ projectId, taskId = null, title = "Links" }
   const [linkTitle, setLinkTitle] = useState("");
   const [sourceType, setSourceType] = useState("other");
   const [notes, setNotes] = useState("");
+  const [editingId, setEditingId] = useState(null);
 
-  const params = useMemo(() => ({ project_id: projectId, ...(taskId ? { task_id: taskId } : {}) }), [projectId, taskId]);
-  const queryKey = ["links", params];
+  // Resolve owner: explicit prop wins; otherwise derive from legacy props.
+  const owner = useMemo(() => {
+    if (ownerProp) return ownerProp;
+    return { project_id: projectId, ...(taskId ? { task_id: taskId } : {}) };
+  }, [ownerProp, projectId, taskId]);
+
+  const hasOwner = Object.values(owner).some((v) => v != null && v !== "");
+  const queryKey = ["links", owner];
 
   const { data: links = [], isLoading } = useQuery({
     queryKey,
-    queryFn: () => linksApi.getAll(params),
-    enabled: !!projectId,
+    queryFn: () => linksApi.getAll(owner),
+    enabled: hasOwner,
   });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey });
     if (taskId) qc.invalidateQueries({ queryKey: ["task-detail", taskId] });
     if (projectId) qc.invalidateQueries({ queryKey: ["project", String(projectId)] });
+    if (owner.linkable_type === "Course" || owner.linkable_type === "CourseUnit") {
+      qc.invalidateQueries({ queryKey: ["course"] });
+    }
   };
 
-  const createMutation = useMutation({
-    mutationFn: () => linksApi.create({
-      project_id: projectId,
-      task_id: taskId,
-      url: url.trim(),
-      title: linkTitle.trim() || null,
-      source_type: sourceType,
-      notes: notes.trim() || null,
-    }),
-    onSuccess: () => {
-      setUrl("");
-      setLinkTitle("");
-      setSourceType("other");
-      setNotes("");
-      setShowForm(false);
-      setError(null);
-      invalidate();
+  const resetForm = () => {
+    setUrl("");
+    setLinkTitle("");
+    setSourceType("other");
+    setNotes("");
+    setEditingId(null);
+    setShowForm(false);
+    setError(null);
+  };
+
+  const startEdit = (link) => {
+    setEditingId(link.id);
+    setUrl(link.url || "");
+    setLinkTitle(link.title || "");
+    setSourceType(link.source_type || "other");
+    setNotes(link.notes || "");
+    setShowForm(true);
+    setError(null);
+  };
+
+  // Owner is NOT re-sent on update (owner is immutable server-side).
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const fields = {
+        url: url.trim(),
+        title: linkTitle.trim() || null,
+        source_type: sourceType,
+        notes: notes.trim() || null,
+      };
+      return editingId
+        ? linksApi.update(editingId, fields)
+        : linksApi.create({ ...owner, ...fields });
     },
-    onError: (err) => setError(err?.response?.data?.error || err.message || "Failed to add link"),
+    onSuccess: () => { resetForm(); invalidate(); },
+    onError: (err) => setError(err?.response?.data?.error || err.message || "Failed to save link"),
   });
 
   const deleteMutation = useMutation({
@@ -88,7 +125,7 @@ export default function LinksPanel({ projectId, taskId = null, title = "Links" }
           <h3 className="text-sm font-semibold text-white">{title}</h3>
         </div>
         <button
-          onClick={() => { setShowForm(v => !v); setError(null); }}
+          onClick={() => (showForm ? resetForm() : setShowForm(true))}
           className="flex items-center gap-1.5 text-xs bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1.5 rounded transition-colors"
         >
           {showForm ? <X size={12} /> : <Plus size={12} />}
@@ -133,11 +170,11 @@ export default function LinksPanel({ projectId, taskId = null, title = "Links" }
             className="w-full bg-gray-950 text-white text-sm rounded px-2.5 py-1.5 border border-gray-700 outline-none resize-none"
           />
           <button
-            onClick={() => createMutation.mutate()}
-            disabled={!url.trim() || createMutation.isPending}
+            onClick={() => saveMutation.mutate()}
+            disabled={!url.trim() || saveMutation.isPending}
             className="text-xs bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white px-3 py-1.5 rounded transition-colors"
           >
-            {createMutation.isPending ? "Saving..." : "Save link"}
+            {saveMutation.isPending ? "Saving..." : editingId ? "Update link" : "Save link"}
           </button>
         </div>
       )}
@@ -177,13 +214,22 @@ export default function LinksPanel({ projectId, taskId = null, title = "Links" }
                     <div className="text-xs text-gray-400 mt-1.5 whitespace-pre-wrap">{link.notes}</div>
                   )}
                 </div>
-                <button
-                  onClick={() => deleteMutation.mutate(link.id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-all"
-                  title="Delete link"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => startEdit(link)}
+                    className="text-gray-600 hover:text-orange-300"
+                    title="Edit link"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    onClick={() => deleteMutation.mutate(link.id)}
+                    className="text-gray-600 hover:text-red-400"
+                    title="Delete link"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

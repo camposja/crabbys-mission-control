@@ -6,7 +6,7 @@ import {
   Bot, CalendarDays, BarChart2, Settings,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
   WifiOff, Wifi, Loader, BookKey, Briefcase, Pencil, ClipboardList,
-  Menu, X,
+  GraduationCap, Menu, X,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { dashboardApi } from "../../api/dashboard";
@@ -16,6 +16,7 @@ export const NAV_ITEMS = [
   { id: "dashboard",      to: "/",                icon: LayoutDashboard,   label: "Dashboard"        },
   { id: "tasks",          to: "/tasks",           icon: ListTodo,          label: "Tasks"             },
   { id: "projects",       to: "/projects",        icon: FolderKanban,      label: "Projects"          },
+  { id: "courses",        to: "/courses",         icon: GraduationCap,     label: "Courses"           },
   { id: "agents",         to: "/agents",          icon: Bot,               label: "Agents"            },
   { id: "team",           to: "/team",            icon: Users,             label: "Team"              },
   { id: "memory",         to: "/memory",          icon: Brain,             label: "Memory"            },

@@ -23,5 +23,16 @@ FactoryBot.define do
     trait :with_notes do
       notes { "Some context about this link" }
     end
+
+    # Course/unit links use the polymorphic owner instead of a project.
+    trait :for_course do
+      project { nil }
+      association :linkable, factory: :course
+    end
+
+    trait :for_unit do
+      project { nil }
+      association :linkable, factory: :course_unit
+    end
   end
 end

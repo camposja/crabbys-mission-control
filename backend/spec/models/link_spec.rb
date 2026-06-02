@@ -2,13 +2,39 @@ require 'rails_helper'
 
 RSpec.describe Link, type: :model do
   # ── Associations ────────────────────────────────────────────────────────────
-  it { is_expected.to belong_to(:project) }
+  it { is_expected.to belong_to(:project).optional }
   it { is_expected.to belong_to(:task).optional }
+  it { is_expected.to belong_to(:linkable).optional }
 
   # ── Validations ─────────────────────────────────────────────────────────────
   it { is_expected.to validate_presence_of(:url) }
-  it { is_expected.to validate_presence_of(:project) }
   it { is_expected.to validate_inclusion_of(:source_type).in_array(Link::SOURCE_TYPES) }
+
+  # ── Owner requirement (project XOR polymorphic linkable) ─────────────────────
+  describe "must_have_owner" do
+    it "is valid as a legacy project link (no linkable)" do
+      expect(build(:link, project: create(:project), linkable: nil)).to be_valid
+    end
+
+    it "is valid as a polymorphic course link (no project)" do
+      expect(build(:link, :for_course)).to be_valid
+    end
+
+    it "is invalid with neither a project nor a linkable owner" do
+      link = build(:link, project: nil, task: nil, linkable: nil)
+      expect(link).not_to be_valid
+      expect(link.errors[:base]).to include("must belong to a project or a linkable owner")
+    end
+  end
+
+  describe ".for_linkable" do
+    it "filters by polymorphic owner" do
+      course = create(:course)
+      link = create(:link, linkable: course, project: nil)
+      _other = create(:link)
+      expect(Link.for_linkable("Course", course.id)).to eq([link])
+    end
+  end
 
   # ── Custom validation: task_belongs_to_project ──────────────────────────────
   describe "task_belongs_to_project" do
