@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { dashboardApi } from "../../api/dashboard";
 import { Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { API_URL } from "../../lib/config";
 
 export default function GatewayHealth() {
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey:       ["gateway"],
     queryFn:        dashboardApi.getGateway,
     refetchInterval: 30_000,
@@ -29,12 +30,14 @@ export default function GatewayHealth() {
 
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-white">OpenClaw Gateway</p>
-        <p className={cn("text-xs", connected ? "text-green-400" : "text-red-400")}>
+        <p className={cn("text-xs truncate", connected ? "text-green-400" : "text-red-400")}>
           {isLoading
             ? "Checking…"
             : connected
               ? `Connected · ${data.latency_ms}ms · ${data.gateway_url}`
-              : `Unreachable · ${data?.gateway_url}`
+              : isError
+                ? `Rails backend unreachable · ${API_URL}`
+                : `OpenClaw unreachable · ${data?.gateway_url}`
           }
         </p>
       </div>

@@ -6,8 +6,7 @@ import "@xterm/xterm/css/xterm.css";
 import { createConsumer }    from "@rails/actioncable";
 import { Plus, X, AlertTriangle, Terminal as TermIcon } from "lucide-react";
 import ErrorBoundary         from "../../components/ui/ErrorBoundary";
-
-const CABLE_URL = import.meta.env.VITE_CABLE_URL || "ws://localhost:3000/cable";
+import { CABLE_URL }         from "../../lib/config";
 
 function makeSessionId() {
   return `term-${Math.random().toString(36).slice(2, 10)}`;
