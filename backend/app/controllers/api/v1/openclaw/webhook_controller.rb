@@ -1,3 +1,5 @@
+require "ipaddr"
+
 module Api
   module V1
     module Openclaw
@@ -17,7 +19,7 @@ module Api
       class WebhookController < BaseController
         # Skip any future auth middleware for inbound gateway calls
         skip_before_action :verify_authenticity_token, raise: false
-        before_action :verify_webhook_token
+        before_action :authorize_webhook
 
         def create
           event_type = params[:event_type].to_s
@@ -61,21 +63,43 @@ module Api
 
           response_body = { received: true, task_id: task&.id }
           unless ENV["MISSION_CONTROL_WEBHOOK_TOKEN"].present?
-            response_body[:warning] = "Webhook authentication is disabled. Set MISSION_CONTROL_WEBHOOK_TOKEN to secure this endpoint."
+            response_body[:warning] = "Webhook token not set — request allowed because it is loopback-only. " \
+                                      "Set MISSION_CONTROL_WEBHOOK_TOKEN to allow authorized non-local callers."
           end
           render json: response_body
         end
 
         private
 
-        def verify_webhook_token
-          expected_token = ENV["MISSION_CONTROL_WEBHOOK_TOKEN"]
-          return unless expected_token.present?
+        # Local-safe protection for this state-changing, machine-to-machine endpoint.
+        # Require ONE of:
+        #   1. a matching X-Mission-Control-Token header (strongest; allowed from any host), or
+        #   2. a loopback-only caller, when no token is configured.
+        # Loopback is judged by the *remote IP* (request.local? / IPAddr#loopback?), never the
+        # Host header — "localhost" resolves to an IP before Rails sees the request.
+        def authorize_webhook
+          expected = ENV["MISSION_CONTROL_WEBHOOK_TOKEN"].to_s
 
-          provided_token = request.headers["X-Mission-Control-Token"]
-          unless ActiveSupport::SecurityUtils.secure_compare(provided_token.to_s, expected_token)
-            render json: { error: "Unauthorized" }, status: :unauthorized
+          if expected.present?
+            provided = request.headers["X-Mission-Control-Token"].to_s
+            # Length check first so secure_compare only ever sees equal-length inputs
+            # (avoids any version-dependent length-mismatch behavior).
+            unless provided.bytesize == expected.bytesize &&
+                   ActiveSupport::SecurityUtils.secure_compare(provided, expected)
+              render json: { error: "Unauthorized" }, status: :unauthorized
+              return
+            end
+          elsif !loopback_request?
+            render json: { error: "Forbidden: webhook requires loopback or a configured token" },
+                   status: :forbidden
+            return
           end
+        end
+
+        def loopback_request?
+          request.local? || IPAddr.new(request.remote_ip).loopback?
+        rescue IPAddr::InvalidAddressError
+          false # fail closed on an unparseable remote IP
         end
 
         def resolve_task(task_id, agent_id)
