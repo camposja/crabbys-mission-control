@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import ErrorBoundary from "../ui/ErrorBoundary";
+import LanWarningBanner from "./LanWarningBanner";
 
 // Map path → panel name for error boundary labels
 const panelName = (path) => {
@@ -24,6 +25,7 @@ export default function AppLayout() {
     <div className="flex h-screen overflow-hidden bg-gray-950">
       <Sidebar />
       <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
+        <LanWarningBanner />
         <ErrorBoundary key={location.pathname} name={panelName(location.pathname)}>
           <Outlet />
         </ErrorBoundary>

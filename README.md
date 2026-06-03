@@ -51,13 +51,46 @@ Open **http://localhost:5173**
 | `OPENCLAW_GATEWAY_TOKEN` | — | **Required** — token from `~/.openclaw/openclaw.json` |
 | `RAILS_PORT` | `3000` | Rails server port |
 | `DATABASE_URL` | *(from database.yml)* | Override Postgres connection |
+| `MISSION_CONTROL_ALLOW_LAN` | `false` | Opt into LAN mode — allow CORS from private/Tailscale frontend origins (see below) |
 
 ### Frontend (`frontend/.env.local`)
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:3000/api/v1` | Rails API base URL |
-| `VITE_CABLE_URL` | `ws://localhost:3000/cable` | Action Cable WebSocket URL |
+| `VITE_API_URL` | `http://localhost:3000/api/v1` | Rails API base URL (explicit override) |
+| `VITE_CABLE_URL` | `ws://localhost:3000/cable` | Action Cable WebSocket URL (explicit override) |
+| `VITE_ENABLE_LAN_MODE` | `false` | Opt into LAN mode — derive the backend URL from the page host (see below) |
+
+---
+
+## Local (default) vs LAN mode
+
+Mission Control is a no-login local operator app, so it is **localhost-only by default**:
+
+- The frontend always talks to `http://localhost:3000`, even if you open it from a LAN URL —
+  nothing silently targets the LAN.
+- Rails CORS allows only `localhost` frontend origins.
+
+**LAN mode (opt-in).** To reach Mission Control from another device on a trusted network
+(home LAN, Tailscale, or an SSH tunnel), set **both** flags and restart **both** servers:
+
+```bash
+# backend/.env
+MISSION_CONTROL_ALLOW_LAN=true     # CORS allows 192.168.* / 10.* / 172.16-31.* / Tailscale 100.64.0.0/10 (100.64–100.127.x.x) / *.ts.net on :5173
+
+# frontend/.env.local
+VITE_ENABLE_LAN_MODE=true          # frontend derives the backend URL from the page host
+```
+
+When LAN mode is active a **red warning banner** is shown and the Terminal page escalates its
+notice. Notes:
+
+- `VITE_*` vars are baked in at **build** time — the dev server picks up changes on restart,
+  but a production build must be **rebuilt**.
+- Use only on trusted networks. **CORS is not an auth boundary** — it only restricts browsers.
+  Protecting state-changing endpoints from direct (non-browser) callers is a separate concern
+  (the OpenClaw webhook already requires a token or loopback; a follow-up will do the same for
+  the Terminal/exec endpoints).
 
 ---
 

@@ -5,9 +5,13 @@
 
 # Read more: https://github.com/cyu/rack-cors
 
+# Localhost dev origins are always allowed. LAN/Tailscale origins are only
+# allowed when MISSION_CONTROL_ALLOW_LAN=true (see lib/cors_origins.rb).
+require Rails.root.join("lib", "cors_origins")
+
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
-    origins "http://localhost:5173", "http://localhost:3001", /\Ahttp:\/\/192\.168\.\d+\.\d+:5173\z/
+    origins(*CorsOrigins.call)
     resource "*",
       headers: :any,
       methods: [:get, :post, :put, :patch, :delete, :options, :head],

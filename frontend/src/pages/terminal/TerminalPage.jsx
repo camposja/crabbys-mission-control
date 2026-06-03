@@ -6,7 +6,7 @@ import "@xterm/xterm/css/xterm.css";
 import { createConsumer }    from "@rails/actioncable";
 import { Plus, X, AlertTriangle, Terminal as TermIcon } from "lucide-react";
 import ErrorBoundary         from "../../components/ui/ErrorBoundary";
-import { CABLE_URL }         from "../../lib/config";
+import { CABLE_URL, IS_LAN_MODE } from "../../lib/config";
 
 function makeSessionId() {
   return `term-${Math.random().toString(36).slice(2, 10)}`;
@@ -176,11 +176,19 @@ function TerminalInner() {
 
   return (
     <div className="flex flex-col h-full bg-[#0d1117]" style={{ minHeight: "600px" }}>
-      {/* Security notice bar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20 text-xs text-yellow-400 shrink-0">
-        <AlertTriangle size={12} />
-        Local terminal — keep this app on localhost only. Never expose to the internet.
-      </div>
+      {/* Security notice bar — escalates when reachable over the LAN */}
+      {IS_LAN_MODE ? (
+        <div className="flex items-center gap-2 px-4 py-2 bg-red-500/15 border-b border-red-500/30 text-xs text-red-300 shrink-0">
+          <AlertTriangle size={12} />
+          LAN mode is ON — this is a real shell on the host and is reachable over your network right now.
+          Only use on a trusted LAN/Tailscale/SSH tunnel; never expose to the internet.
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20 text-xs text-yellow-400 shrink-0">
+          <AlertTriangle size={12} />
+          Local terminal — runs real shell commands on the host. Keep this app on localhost only. Never expose to the internet.
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-3 pt-2 bg-gray-950 border-b border-gray-800 shrink-0">
