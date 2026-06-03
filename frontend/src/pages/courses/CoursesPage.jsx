@@ -5,6 +5,7 @@ import { Plus, GraduationCap, Award, Layers, NotebookPen, Link2 } from "lucide-r
 import { coursesApi } from "../../api/courses";
 import { cn } from "../../lib/utils";
 import CourseForm from "../../components/courses/CourseForm";
+import ApiError from "../../components/ui/ApiError";
 
 const STATUS_COLORS = {
   active:    "bg-green-500/20 text-green-400 border-green-500/30",
@@ -16,9 +17,8 @@ export default function CoursesPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState(null);
 
-  const { data: courses = [], isLoading } = useQuery({
+  const { data: courses = [], isLoading, isError, error } = useQuery({
     queryKey: ["courses"],
     queryFn: coursesApi.getAll,
   });
@@ -27,11 +27,10 @@ export default function CoursesPage() {
     mutationFn: coursesApi.create,
     onSuccess: (course) => {
       setShowForm(false);
-      setError(null);
       qc.invalidateQueries({ queryKey: ["courses"] });
       if (course?.id) navigate(`/courses/${course.id}`);
     },
-    onError: (err) => setError(err?.response?.data?.error || err.message || "Failed to create course"),
+    // axios error rendered via <ApiError createMutation.error>
   });
 
   return (
@@ -52,13 +51,19 @@ export default function CoursesPage() {
         </button>
       </div>
 
+      {isError && <div className="mb-4"><ApiError error={error} title="Could not load courses" /></div>}
+
       {showForm && (
-        <CourseForm
-          onSubmit={(data) => createMutation.mutate(data)}
-          onCancel={() => { setShowForm(false); setError(null); }}
-          saving={createMutation.isPending}
-          error={error}
-        />
+        <>
+          {createMutation.isError && (
+            <div className="mb-3"><ApiError error={createMutation.error} title="Failed to create course" /></div>
+          )}
+          <CourseForm
+            onSubmit={(data) => createMutation.mutate(data)}
+            onCancel={() => setShowForm(false)}
+            saving={createMutation.isPending}
+          />
+        </>
       )}
 
       {isLoading ? (

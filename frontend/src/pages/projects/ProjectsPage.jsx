@@ -5,6 +5,7 @@ import { Plus, X, FolderOpen, Loader2 } from "lucide-react";
 import { projectsApi } from "../../api/projects";
 import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
+import ApiError from "../../components/ui/ApiError";
 
 const STATUS_COLORS = {
   active:    "bg-green-500/20 text-green-400 border-green-500/30",
@@ -23,7 +24,7 @@ export default function ProjectsPage() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  const { data: projects = [], isLoading } = useQuery({
+  const { data: projects = [], isLoading, isError, error } = useQuery({
     queryKey: ["projects"],
     queryFn: projectsApi.getAll,
   });
@@ -70,6 +71,8 @@ export default function ProjectsPage() {
           New Project
         </button>
       </div>
+
+      {isError && <div className="mb-4"><ApiError error={error} title="Could not load projects" /></div>}
 
       {/* New project form */}
       {showForm && (

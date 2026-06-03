@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { documentsApi } from "../../api/documents";
 import { FileText, FolderOpen, Check, X, Edit3, Database, Search, Upload, AlertTriangle, Download, ChevronRight, ArrowLeft, Briefcase } from "lucide-react";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
+import ApiError from "../../components/ui/ApiError";
 
 const READ_ONLY_EXTENSIONS = /\.(docx|pdf)$/i;
 
@@ -304,7 +305,7 @@ function DocsInner() {
   const [searchQ,    setSearchQ]    = useState("");
   const [searchSubmit, setSearchSubmit] = useState("");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["documents"],
     queryFn:  documentsApi.getAll,
     staleTime: 30_000,
@@ -411,7 +412,9 @@ function DocsInner() {
             </div>
           )}
 
-          {isLoading && activeTab !== "resumes" ? (
+          {isError && activeTab !== "resumes" ? (
+            <ApiError error={error} title="Could not load documents" />
+          ) : isLoading && activeTab !== "resumes" ? (
             <p className="text-gray-500 text-sm">Loading…</p>
           ) : activeTab === "resumes" ? (
             <ResumeBrowser selected={selected} onSelect={setSelected} />

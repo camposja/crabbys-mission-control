@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { coursesApi } from "../../api/courses";
+import ApiError from "../ui/ApiError";
 
 const slugify = (s) =>
   (s || "course").toString().toLowerCase().trim()
@@ -67,31 +68,27 @@ function buildSample(course) {
 export default function BulkImportPanel({ course = null }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
-  const [error, setError] = useState(null);
+  const [parseError, setParseError] = useState(null);
   const [result, setResult] = useState(null);
 
   const mutation = useMutation({
     mutationFn: (payload) => coursesApi.bulkUpsert(payload),
     onSuccess: (data) => {
       setResult(data);
-      setError(null);
       qc.invalidateQueries({ queryKey: ["courses"] });
       qc.invalidateQueries({ queryKey: ["course"] });
     },
-    onError: (err) => {
-      setResult(null);
-      setError(err?.response?.data?.error || err.message || "Bulk import failed");
-    },
+    onError: () => setResult(null), // axios error rendered via <ApiError mutation.error>
   });
 
   const handleImport = () => {
-    setError(null);
+    setParseError(null);
     setResult(null);
     let payload;
     try {
       payload = JSON.parse(text);
     } catch {
-      setError("Invalid JSON — check syntax.");
+      setParseError("Invalid JSON — check syntax.");
       return;
     }
     mutation.mutate(payload);
@@ -137,9 +134,15 @@ export default function BulkImportPanel({ course = null }) {
         className="w-full bg-gray-950 text-white text-xs font-mono rounded px-2.5 py-2 border border-gray-700 outline-none resize-y"
       />
 
-      {error && (
+      {parseError && (
         <div className="mt-2 flex items-center gap-2 text-xs text-red-400 bg-red-950/40 border border-red-800 rounded px-3 py-2">
-          <AlertCircle size={13} className="shrink-0" /> {error}
+          <AlertCircle size={13} className="shrink-0" /> {parseError}
+        </div>
+      )}
+
+      {mutation.isError && (
+        <div className="mt-2">
+          <ApiError error={mutation.error} title="Bulk import failed" />
         </div>
       )}
 
@@ -153,6 +156,7 @@ export default function BulkImportPanel({ course = null }) {
             {renderCounts("Created", result.created)}
             {renderCounts("Updated", result.updated)}
             {renderCounts("Deleted", result.deleted)}
+            {renderCounts("Skipped", result.skipped)}
             {result.errors?.length > 0 && (
               <span className="text-xs text-amber-400">Warnings: {result.errors.join("; ")}</span>
             )}

@@ -9,6 +9,7 @@ import CourseUnitList from "../../components/courses/CourseUnitList";
 import BulkImportPanel from "../../components/courses/BulkImportPanel";
 import NotesPanel from "../../components/notes/NotesPanel";
 import LinksPanel from "../../components/links/LinksPanel";
+import ApiError from "../../components/ui/ApiError";
 
 const STATUS_COLORS = {
   active:    "bg-green-500/20 text-green-400 border-green-500/30",
@@ -30,7 +31,7 @@ export default function CourseDetailPage() {
   const [editError, setEditError] = useState(null);
   const [selectedUnitId, setSelectedUnitId] = useState(null);
 
-  const { data: course, isLoading, isError } = useQuery({
+  const { data: course, isLoading, isError, error } = useQuery({
     queryKey: ["course", id],
     queryFn: () => coursesApi.get(id),
   });
@@ -64,7 +65,7 @@ export default function CourseDetailPage() {
         <Link to="/courses" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors mb-4">
           <ArrowLeft size={14} /> Back to Courses
         </Link>
-        <p className="text-red-400 text-sm">Course not found.</p>
+        <ApiError error={error} title="Could not load this course" />
       </div>
     );
   }

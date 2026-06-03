@@ -8,6 +8,7 @@ import { useChannel } from "../../hooks/useChannel";
 import { cn } from "../../lib/utils";
 import PlanningModal from "../../components/tasks/PlanningModal";
 import TaskDetailDialog from "../../components/tasks/TaskDetailDialog";
+import ApiError from "../../components/ui/ApiError";
 
 const COLUMNS = [
   { id: "backlog",     label: "Backlog",     color: "text-gray-400",   dot: "bg-gray-500"   },
@@ -59,7 +60,7 @@ export default function TasksPage() {
 
   const taskParams = selectedProjectId ? { project_id: selectedProjectId } : {};
 
-  const { data: tasksByStatus = {}, isLoading } = useQuery({
+  const { data: tasksByStatus = {}, isLoading, isError: boardError, error: boardErrorObj } = useQuery({
     queryKey: ["tasks", { project_id: selectedProjectId }],
     queryFn:  () => tasksApi.getAll(taskParams),
   });
@@ -132,6 +133,9 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* Board load error */}
+      {boardError && <div className="mb-4 shrink-0"><ApiError error={boardErrorObj} title="Could not load the board" /></div>}
 
       {/* Error banner */}
       {error && (
