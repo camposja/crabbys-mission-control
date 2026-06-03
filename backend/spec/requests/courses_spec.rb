@@ -243,6 +243,7 @@ RSpec.describe "Courses API", type: :request do
     it "returns 422 for an invalid payload and rolls back the whole batch" do
       bad = {
         courses: [
+          { external_id: "ok-course", title: "OK" },
           { external_id: "x", title: "X", units: [
             { external_id: "u", title: "U", notes: [{ external_id: "n", note_type: "BOGUS", body: "" }] }
           ] }
@@ -250,8 +251,92 @@ RSpec.describe "Courses API", type: :request do
       }
       expect {
         post "/api/v1/courses/bulk_upsert", params: bad.to_json, headers: headers
-      }.to change(Course, :count).by(0)
+      }.to change(Course, :count).by(0) # course #1 rolled back too — no partial write
       expect(response).to have_http_status(:unprocessable_entity)
+
+      body = JSON.parse(response.body)
+      expect(body["error"]).to eq("Bulk upsert failed")
+      detail = body["details"].first
+      expect(detail["entity"]).to eq("note")
+      expect(detail["path"]).to eq("courses[1].units[0].notes[0]")
+      expect(detail["message"]).to be_present
+    end
+
+    it "always returns the full summary shape including skipped" do
+      post "/api/v1/courses/bulk_upsert",
+           params: { courses: [{ external_id: "shape", title: "Shape" }] }.to_json, headers: headers
+      body = JSON.parse(response.body)
+      expect(body.keys).to include("created", "updated", "deleted", "skipped", "errors")
+    end
+
+    it "returns 422 for an empty payload (no courses, no deletes)" do
+      post "/api/v1/courses/bulk_upsert", params: {}.to_json, headers: headers
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    it "returns 422 for an array body" do
+      post "/api/v1/courses/bulk_upsert", params: [{ title: "X" }].to_json, headers: headers
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+
+    describe "delete semantics" do
+      let(:seed) do
+        { courses: [{ external_id: "c", title: "C", units: [
+          { external_id: "u", title: "U", notes: [{ external_id: "n", note_type: "personal", body: "x" }] }
+        ] }] }
+      end
+
+      it "returns 422 when a well-formed delete target is missing" do
+        del = { deletes: [{ entity: "note", external_id: "ghost", course_external_id: "c", unit_external_id: "u" }] }
+        post "/api/v1/courses/bulk_upsert", params: del.to_json, headers: headers
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "skips a missing target (200) when ignore_missing_deletes is true" do
+        del = {
+          ignore_missing_deletes: true,
+          deletes: [{ entity: "note", external_id: "ghost", course_external_id: "c", unit_external_id: "u" }]
+        }
+        post "/api/v1/courses/bulk_upsert", params: del.to_json, headers: headers
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)["skipped"]["note"]).to eq(1)
+      end
+
+      it "returns 422 for an unknown delete entity (malformed)" do
+        del = { deletes: [{ entity: "widget", external_id: "x" }] }
+        post "/api/v1/courses/bulk_upsert", params: del.to_json, headers: headers
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+
+      it "returns 422 for a malformed delete missing course_external_id" do
+        del = { deletes: [{ entity: "note", external_id: "n" }] }
+        post "/api/v1/courses/bulk_upsert", params: del.to_json, headers: headers
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
+
+    it "returns 422 for a wrong-parent unit id and writes nothing" do
+      c1 = create(:course)
+      other = create(:course)
+      foreign_unit = create(:course_unit, course: other)
+      payload = { courses: [{ id: c1.id, title: "C1", units: [{ id: foreign_unit.id, title: "Hijack" }] }] }
+      expect {
+        post "/api/v1/courses/bulk_upsert", params: payload.to_json, headers: headers
+      }.to change(CourseUnit, :count).by(0)
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(foreign_unit.reload.title).not_to eq("Hijack")
+    end
+
+    it "returns 422 when id and external_id conflict with a different record" do
+      course = create(:course)
+      a = create(:course_unit, course: course, external_id: "keep")
+      b = create(:course_unit, course: course, external_id: "other")
+      # Try to set b's external_id to one already owned by a.
+      payload = { courses: [{ id: course.id, title: course.title,
+                              units: [{ id: b.id, external_id: "keep", title: "Conflict" }] }] }
+      post "/api/v1/courses/bulk_upsert", params: payload.to_json, headers: headers
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(b.reload.external_id).to eq("other")
     end
   end
 end

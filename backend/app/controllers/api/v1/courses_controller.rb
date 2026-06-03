@@ -31,9 +31,12 @@ module Api
       end
 
       # POST /api/v1/courses/bulk_upsert — agent-friendly bulk add/update/delete.
+      # Rescued controller-local (small blast radius) → structured 422.
       def bulk_upsert
         result = Courses::BulkUpsertService.new(bulk_params).call
         render json: result, status: :ok
+      rescue Courses::BulkUpsertError => e
+        render json: { error: "Bulk upsert failed", details: e.details }, status: :unprocessable_entity
       end
 
       private
@@ -51,7 +54,7 @@ module Api
 
       # Permit the full nested agent payload untouched (validated inside the service).
       def bulk_params
-        params.permit!.to_h.slice("courses", "operations", "deletes")
+        params.permit!.to_h.slice("courses", "operations", "deletes", "ignore_missing_deletes")
       end
 
       # ── Serialization (plain as_json, app convention) ──────────────────────────
