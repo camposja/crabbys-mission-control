@@ -3,7 +3,7 @@
 # Protocol (discovered from OpenClaw source):
 #   1. Connect WebSocket to gateway URL
 #   2. Server sends event: {"event":"connect.challenge","payload":{"nonce":"..."}}
-#   3. Client sends request with "connect" method including device identity + auth
+#   3. Client sends a protocol-v4 "connect" request including device identity + auth
 #   4. Server responds with hello.ok payload
 #   5. Client sends RPC requests: {"type":"req","id":"<uuid>","method":"agents.list","params":{}}
 #   6. Server responds: {"id":"<uuid>","ok":true,"payload":{...}} or {"id":"...","ok":false,"error":{...}}
@@ -30,6 +30,7 @@ module Openclaw
 
     # Default timeout for a single RPC call (seconds).
     RPC_TIMEOUT = 15
+    PROTOCOL_VERSION = 4
 
     # All operator scopes (matches CLI_DEFAULT_OPERATOR_SCOPES from OpenClaw source).
     ALL_SCOPES = %w[
@@ -98,8 +99,8 @@ module Openclaw
             id: connect_id,
             method: "connect",
             params: {
-              minProtocol: 3,
-              maxProtocol: 3,
+              minProtocol: PROTOCOL_VERSION,
+              maxProtocol: PROTOCOL_VERSION,
               client: {
                 id: "gateway-client",
                 displayName: "Crabbys Mission Control",
