@@ -187,7 +187,9 @@ export default function Sidebar() {
         <GatewayStatus />
       </div>
 
-      {/* Reorder modal */}
+    </aside>
+
+      {/* Render outside the transformed sidebar so the editor can use the viewport width. */}
       {isReorderOpen && (
         <NavReorderModal
           open
@@ -202,7 +204,6 @@ export default function Sidebar() {
           defaultItems={NAV_ITEMS.map(item => ({ ...item, hidden: DEFAULT_HIDDEN_IDS.includes(item.id) }))}
         />
       )}
-    </aside>
     </>
   );
 }
