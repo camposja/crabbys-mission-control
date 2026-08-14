@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { documentsApi } from "../../api/documents";
-import { FileText, FolderOpen, Check, X, Edit3, Database, Search, Upload, AlertTriangle, Download, ChevronRight, ArrowLeft, Briefcase } from "lucide-react";
+import { FileText, FolderOpen, Check, X, Edit3, Database, Search, Upload, AlertTriangle, Download, ChevronRight, ArrowLeft, Briefcase, Maximize2, Minimize2 } from "lucide-react";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
 import ApiError from "../../components/ui/ApiError";
 
@@ -9,6 +9,7 @@ const READ_ONLY_EXTENSIONS = /\.(docx|pdf)$/i;
 
 function DocViewer({ doc, onClose, allowDownload = false }) {
   const qc = useQueryClient();
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // DB documents already carry their content; only fetch for file-based docs
   const isDbDoc = !!doc.id && !doc.path;
@@ -34,7 +35,7 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
   const isReadOnly = !doc.path || READ_ONLY_EXTENSIONS.test(doc.path || doc.name || "");
 
   return (
-    <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-auto w-full md:w-[560px] bg-gray-900 border-l border-gray-800 z-40 flex flex-col shadow-2xl">
+    <div className={`fixed inset-0 md:inset-y-0 md:right-0 bg-gray-900 border-l border-gray-800 z-40 flex flex-col shadow-2xl transition-[left,width] duration-200 ${isFullscreen ? "md:left-56 md:w-auto" : "md:left-auto md:w-[560px]"}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -44,6 +45,14 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setIsFullscreen(value => !value)}
+            title={isFullscreen ? "Exit full screen" : "Full screen"}
+            aria-label={isFullscreen ? "Exit full screen" : "Full screen"}
+            className="text-gray-600 hover:text-orange-400 transition-colors"
+          >
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          </button>
           {draft !== null ? (
             <>
               <button
@@ -394,9 +403,7 @@ function DocsInner() {
             <h1 className="text-2xl font-bold text-white">Docs</h1>
             <UploadButton onUploaded={() => setActiveTab("workspace")} />
           </div>
-          <p className="text-gray-400 text-sm">
-            {workspace.length} workspace file{workspace.length !== 1 ? "s" : ""} · {database.length} database doc{database.length !== 1 ? "s" : ""}
-          </p>
+          <p className="text-gray-400 text-sm">Browse workspace files, project documentation, and resumes</p>
           {/* Search bar */}
           <form
             onSubmit={e => { e.preventDefault(); setSearchSubmit(searchQ.trim()); }}
@@ -436,14 +443,6 @@ function DocsInner() {
               }`}
             >
               <FolderOpen size={13} /> Projects
-            </button>
-            <button
-              onClick={() => setActiveTab("database")}
-              className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
-                activeTab === "database" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
-              }`}
-            >
-              <Database size={13} /> Database ({database.length})
             </button>
             <button
               onClick={() => setActiveTab("resumes")}
