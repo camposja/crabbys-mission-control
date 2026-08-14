@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
-  Bot, CalendarDays, BarChart2, Settings,
+  Bot, CalendarDays, BarChart2,
   Cpu, FileText, Users, TerminalSquare, Shield, MessageSquarePlus,
   WifiOff, Wifi, Loader, BookKey, Briefcase, Pencil, ClipboardList,
   GraduationCap, Menu, X,
@@ -30,7 +30,6 @@ export const NAV_ITEMS = [
   { id: "feedback",       to: "/feedback",        icon: MessageSquarePlus, label: "Feedback"          },
   { id: "ops-notes",      to: "/ops-notes",       icon: BookKey,           label: "Claw Cheatsheet"   },
   { id: "todos",          to: "/todos",           icon: ClipboardList,     label: "My To-Dos"         },
-  { id: "settings",       to: "/settings",        icon: Settings,          label: "Settings"          },
 ];
 
 function GatewayStatus() {
@@ -89,20 +88,23 @@ function GatewayStatus() {
 }
 
 const NAV_ORDER_STORAGE_KEY = 'crabby_nav_order';
+const NAV_HIDDEN_STORAGE_KEY = 'crabby_nav_hidden';
+const DEFAULT_HIDDEN_IDS = ['feedback'];
 
 function loadNavOrder() {
   try {
     const saved = localStorage.getItem(NAV_ORDER_STORAGE_KEY);
-    if (!saved) return NAV_ITEMS;
-    const savedIds = JSON.parse(saved);
+    const savedIds = saved ? JSON.parse(saved) : NAV_ITEMS.map(item => item.id);
+    const savedHidden = localStorage.getItem(NAV_HIDDEN_STORAGE_KEY);
+    const hiddenIds = new Set(savedHidden ? JSON.parse(savedHidden) : DEFAULT_HIDDEN_IDS);
     const ordered = savedIds
       .map((id) => NAV_ITEMS.find((item) => item.id === id))
       .filter(Boolean);
     // Append any new items that weren't in the saved order
     const newItems = NAV_ITEMS.filter((item) => !savedIds.includes(item.id));
-    return [...ordered, ...newItems];
+    return [...ordered, ...newItems].map(item => ({ ...item, hidden: hiddenIds.has(item.id) }));
   } catch {
-    return NAV_ITEMS;
+    return NAV_ITEMS.map(item => ({ ...item, hidden: DEFAULT_HIDDEN_IDS.includes(item.id) }));
   }
 }
 
@@ -149,7 +151,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-        {navOrder.map(({ id, to, icon: Icon, label }) => (
+        {navOrder.filter(item => !item.hidden).map(({ id, to, icon: Icon, label }) => (
           <NavLink
             key={id}
             to={to}
@@ -186,17 +188,20 @@ export default function Sidebar() {
       </div>
 
       {/* Reorder modal */}
-      <NavReorderModal
-        open={isReorderOpen}
-        items={navOrder}
-        onSave={(newOrder) => {
-          setNavOrder(newOrder);
-          localStorage.setItem(NAV_ORDER_STORAGE_KEY, JSON.stringify(newOrder.map((i) => i.id)));
-          setIsReorderOpen(false);
-        }}
-        onCancel={() => setIsReorderOpen(false)}
-        defaultItems={NAV_ITEMS}
-      />
+      {isReorderOpen && (
+        <NavReorderModal
+          open
+          items={navOrder}
+          onSave={(newOrder) => {
+            setNavOrder(newOrder);
+            localStorage.setItem(NAV_ORDER_STORAGE_KEY, JSON.stringify(newOrder.map((i) => i.id)));
+            localStorage.setItem(NAV_HIDDEN_STORAGE_KEY, JSON.stringify(newOrder.filter(i => i.hidden).map(i => i.id)));
+            setIsReorderOpen(false);
+          }}
+          onCancel={() => setIsReorderOpen(false)}
+          defaultItems={NAV_ITEMS.map(item => ({ ...item, hidden: DEFAULT_HIDDEN_IDS.includes(item.id) }))}
+        />
+      )}
     </aside>
     </>
   );

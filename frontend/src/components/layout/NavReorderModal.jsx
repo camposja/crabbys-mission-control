@@ -1,17 +1,10 @@
-import { useState, useEffect } from "react";
-import { X, ChevronUp, ChevronDown, RotateCcw, GripVertical } from "lucide-react";
+import { useState } from "react";
+import { X, ChevronUp, ChevronDown, RotateCcw, GripVertical, Eye, EyeOff } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "../../lib/utils";
 
 export default function NavReorderModal({ open, items, onSave, onCancel, defaultItems }) {
   const [localItems, setLocalItems] = useState(items);
-
-  // Sync local state when modal opens or items change
-  useEffect(() => {
-    if (open) {
-      setLocalItems(items);
-    }
-  }, [open, items]);
 
   if (!open) return null;
 
@@ -33,6 +26,10 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
     setLocalItems(defaultItems);
   };
 
+  const toggleVisibility = (id) => {
+    setLocalItems(current => current.map(item => item.id === id ? { ...item, hidden: !item.hidden } : item));
+  };
+
   const handleDragEnd = (result) => {
     if (!result.destination) return;
     const srcIdx = result.source.index;
@@ -51,7 +48,10 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
 
         {/* Header */}
         <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-white">Customize Navigation Order</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-white">Customize Navigation</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Reorder items or hide features you don't use.</p>
+          </div>
           <button
             onClick={onCancel}
             className="text-gray-500 hover:text-white transition-colors"
@@ -82,6 +82,7 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
                           {...dragProvided.draggableProps}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2 rounded-md bg-gray-800/50 border border-gray-800 select-none",
+                            item.hidden && "opacity-50",
                             snapshot.isDragging && "opacity-80 scale-[1.02] shadow-lg border-orange-500/40 bg-gray-800"
                           )}
                           style={{
@@ -99,6 +100,17 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
 
                           <Icon size={14} className="text-gray-400 shrink-0" />
                           <span className="text-sm text-gray-300 flex-1 truncate">{item.label}</span>
+                          <button
+                            onClick={() => toggleVisibility(item.id)}
+                            title={item.hidden ? `Show ${item.label}` : `Hide ${item.label}`}
+                            aria-label={item.hidden ? `Show ${item.label}` : `Hide ${item.label}`}
+                            className={cn(
+                              "p-1 rounded transition-colors",
+                              item.hidden ? "text-gray-600 hover:text-orange-400" : "text-gray-400 hover:text-white hover:bg-gray-700"
+                            )}
+                          >
+                            {item.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
                           <div className="flex items-center gap-0.5">
                             <button
                               onClick={() => moveUp(index)}
