@@ -2,7 +2,8 @@ require "pty"
 require "io/console"
 
 # Streams a pseudoterminal session to the React frontend via Action Cable.
-# Security: Only accessible from localhost. Never expose this to the internet.
+# Security: ApplicationCable::Connection rejects every non-loopback socket peer.
+# Never expose this host shell to the internet.
 #
 # Protocol:
 #   Client → server:  { action: "input", data: "<keystrokes>", session_id: "abc" }
@@ -10,9 +11,6 @@ require "io/console"
 #   Server → client:  { output: "<text>", session_id: "abc" }
 #
 class TerminalChannel < ApplicationCable::Channel
-  # Guards against remote access — this is a local-only tool.
-  # Action Cable connections come through the Rails server which is
-  # bound to localhost, but we double-check here as a defence-in-depth measure.
   ALLOWED_SHELLS = ["/bin/zsh", "/bin/bash", "/bin/sh"].freeze
 
   def subscribed
