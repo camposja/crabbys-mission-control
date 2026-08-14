@@ -375,7 +375,7 @@ function ProjectsBrowser({ selected, onSelect }) {
 
 function DocsInner() {
   const [selected,   setSelected]   = useState(null);
-  const [activeTab,  setActiveTab]  = useState("workspace");
+  const [activeTab,  setActiveTab]  = useState("projects");
   const [searchQ,    setSearchQ]    = useState("");
   const [searchSubmit, setSearchSubmit] = useState("");
 
@@ -429,14 +429,6 @@ function DocsInner() {
           {/* Tabs */}
           <div className="flex gap-4 mb-4 border-b border-gray-800 pb-3">
             <button
-              onClick={() => setActiveTab("workspace")}
-              className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
-                activeTab === "workspace" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
-              }`}
-            >
-              <FolderOpen size={13} /> Workspace ({workspace.length})
-            </button>
-            <button
               onClick={() => setActiveTab("projects")}
               className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
                 activeTab === "projects" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
@@ -451,6 +443,14 @@ function DocsInner() {
               }`}
             >
               <Briefcase size={13} /> Resumes
+            </button>
+            <button
+              onClick={() => setActiveTab("workspace")}
+              className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
+                activeTab === "workspace" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
+              }`}
+            >
+              <FolderOpen size={13} /> Workspace ({workspace.length})
             </button>
           </div>
 
