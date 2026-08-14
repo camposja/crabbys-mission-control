@@ -18,22 +18,9 @@ module Api
           }
         else
           workspace_docs = ::Openclaw::WorkspaceReader.list_workspace_docs
-          database_fs_docs = ::Openclaw::WorkspaceReader.list_database_filesystem_docs
-          
-          # Filter out database docs that duplicate filesystem docs
-          # Match by filename (case-insensitive, ignore extensions and suffixes after —)
-          fs_basenames = database_fs_docs.map { |doc| 
-            doc[:name]&.split('/')&.last&.split('.')&.first&.upcase 
-          }.compact
-          
-          db_docs_filtered = db_docs.reject { |doc|
-            title_base = doc.title&.split('—')&.first&.strip&.upcase
-            fs_basenames.include?(title_base)
-          }
-          
           render json: {
             workspace: workspace_docs,
-            database:  (db_docs_filtered.as_json + database_fs_docs)
+            database:  db_docs.limit(50).as_json
           }
         end
       end
@@ -65,6 +52,14 @@ module Api
       # GET /api/v1/documents/resumes?path=...
       def resumes
         listing = ::Openclaw::WorkspaceReader.list_resumes(params[:path])
+        render json: listing
+      rescue => e
+        render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      # GET /api/v1/documents/projects?path=...
+      def projects
+        listing = ::Openclaw::WorkspaceReader.list_project_docs(params[:path])
         render json: listing
       rescue => e
         render json: { error: e.message }, status: :unprocessable_entity

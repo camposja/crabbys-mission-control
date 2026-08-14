@@ -299,6 +299,71 @@ function ResumeBrowser({ selected, onSelect }) {
   );
 }
 
+function ProjectsBrowser({ selected, onSelect }) {
+  const [currentPath, setCurrentPath] = useState(null);
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["project-documents", currentPath],
+    queryFn: () => documentsApi.getProjects(currentPath),
+    staleTime: 30_000,
+  });
+
+  const folders = data?.folders || [];
+  const files = data?.files || [];
+  const pathParts = currentPath ? currentPath.split("/") : [];
+  const navigateTo = (index) => setCurrentPath(index < 0 ? null : pathParts.slice(0, index + 1).join("/"));
+
+  if (isError) return <ApiError error={error} title="Could not load project documents" />;
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-500 overflow-x-auto">
+        <button onClick={() => setCurrentPath(null)} className={`hover:text-white transition-colors ${!currentPath ? "text-white" : ""}`}>projects</button>
+        {pathParts.map((part, i) => (
+          <span key={i} className="flex items-center gap-1.5 shrink-0">
+            <ChevronRight size={10} className="text-gray-700" />
+            <button onClick={() => navigateTo(i)} className={`hover:text-white transition-colors ${i === pathParts.length - 1 ? "text-white" : ""}`}>{part}</button>
+          </span>
+        ))}
+      </div>
+
+      {currentPath && (
+        <button onClick={() => navigateTo(pathParts.length - 2)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-white mb-2 transition-colors">
+          <ArrowLeft size={12} /> Back
+        </button>
+      )}
+
+      {isLoading ? (
+        <p className="text-gray-500 text-sm">Loading…</p>
+      ) : folders.length === 0 && files.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+          <FolderOpen size={36} className="mb-3 opacity-40" />
+          <p className="text-sm">No folders or Markdown documents here</p>
+        </div>
+      ) : (
+        <div className="space-y-0.5">
+          {folders.map(folder => (
+            <button key={folder.path} onClick={() => setCurrentPath(folder.path)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-gray-800 border border-transparent transition-colors text-left">
+              <FolderOpen size={13} className="text-orange-400 shrink-0" />
+              <p className="text-sm text-white truncate">{folder.name}</p>
+              <ChevronRight size={12} className="text-gray-700 ml-auto shrink-0" />
+            </button>
+          ))}
+          {files.map(file => (
+            <button key={file.path} onClick={() => onSelect(prev => prev?.path === file.path ? null : file)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left ${selected?.path === file.path ? "bg-orange-500/10 border border-orange-500/30" : "hover:bg-gray-800 border border-transparent"}`}>
+              <FileText size={13} className="text-gray-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">{file.name}</p>
+                <p className="text-xs text-gray-600 font-mono truncate">{file.relative}</p>
+              </div>
+              <span className="text-xs text-gray-700 shrink-0">{file.size < 1024 ? `${file.size}B` : `${(file.size / 1024).toFixed(1)}KB`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DocsInner() {
   const [selected,   setSelected]   = useState(null);
   const [activeTab,  setActiveTab]  = useState("workspace");
@@ -365,12 +430,20 @@ function DocsInner() {
               <FolderOpen size={13} /> Workspace ({workspace.length})
             </button>
             <button
-              onClick={() => setActiveTab("qr-doorbell")}
+              onClick={() => setActiveTab("projects")}
               className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
-                activeTab === "qr-doorbell" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
+                activeTab === "projects" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
               }`}
             >
-              <Database size={13} /> Mission Control (DB) ({database.length})
+              <FolderOpen size={13} /> Projects
+            </button>
+            <button
+              onClick={() => setActiveTab("database")}
+              className={`flex items-center gap-1.5 text-sm pb-0.5 transition-colors ${
+                activeTab === "database" ? "text-white border-b-2 border-orange-500" : "text-gray-500 hover:text-gray-400"
+              }`}
+            >
+              <Database size={13} /> Database ({database.length})
             </button>
             <button
               onClick={() => setActiveTab("resumes")}
@@ -418,6 +491,8 @@ function DocsInner() {
             <p className="text-gray-500 text-sm">Loading…</p>
           ) : activeTab === "resumes" ? (
             <ResumeBrowser selected={selected} onSelect={setSelected} />
+          ) : activeTab === "projects" ? (
+            <ProjectsBrowser selected={selected} onSelect={setSelected} />
           ) : activeTab === "workspace" ? (
             workspace.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-600">
@@ -428,7 +503,7 @@ function DocsInner() {
             ) : (
               <WorkspaceDocList docs={workspace} selected={selected} onSelect={setSelected} />
             )
-          ) : activeTab === "qr-doorbell" ? (
+          ) : activeTab === "database" ? (
             database.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-600">
                 <Database size={36} className="mb-3 opacity-40" />

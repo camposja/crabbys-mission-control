@@ -14,7 +14,8 @@ export const documentsApi = {
     }).then(r => r.data);
   },
 
-  // Resumes
+  // Filesystem browsers
+  getProjects:   (subpath) => client.get("/documents/projects", { params: { path: subpath } }).then(r => r.data),
   getResumes:    (subpath) => client.get("/documents/resumes", { params: { path: subpath } }).then(r => r.data),
   downloadUrl:   (path) => `${client.defaults.baseURL}/documents/download?path=${encodeURIComponent(path)}`,
 };

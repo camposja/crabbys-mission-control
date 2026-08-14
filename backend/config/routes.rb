@@ -82,6 +82,7 @@ Rails.application.routes.draw do
           patch :content,  action: :update_content
           get  :search
           post :upload
+          get  :projects
           get  :resumes
           get  :download
         end

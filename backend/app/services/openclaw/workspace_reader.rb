@@ -37,40 +37,14 @@ module Openclaw
       files.sort_by { |f| f[:modified] }.reverse
     end
 
-    # List project docs for the "Mission Control (DB)" tab.
-    # Organizes files into virtual folders (e.g., QR Doorbell).
-    # Includes content preview snippets for better UX.
-    def self.list_database_filesystem_docs
-      return [] unless Dir.exist?(workspace_path)
+    def self.projects_path
+      File.join(workspace_path, "projects")
+    end
 
-      docs = []
-
-      # QR Doorbell project files
-      qr_doorbell_dir = File.join(workspace_path, "projects", "qr-doorbell")
-      if Dir.exist?(qr_doorbell_dir)
-        Dir.glob(File.join(qr_doorbell_dir, "*.{md,txt}")).each do |path|
-          stat = File.stat(path)
-          
-          # Read first 300 chars for preview (skip empty files)
-          content_preview = begin
-            File.read(path, 300).gsub(/\s+/, " ").strip
-          rescue
-            nil
-          end
-          
-          docs << {
-            name:     "qr-doorbell/#{File.basename(path)}",
-            path:     path,
-            folder:   "qr-doorbell",
-            size:     stat.size,
-            modified: stat.mtime.iso8601,
-            type:     File.extname(path).delete("."),
-            content:  content_preview # Add preview for consistency with DB docs
-          }
-        end
-      end
-
-      docs.sort_by { |f| f[:modified] }.reverse
+    # Browse projects/ one directory at a time. Each returned folder can be
+    # opened through the same endpoint, supporting arbitrary nesting.
+    def self.list_project_docs(subpath = nil)
+      browse_directory(projects_path, subpath, allowed_extensions: %w[.md])
     end
 
     # ── Resumes ──────────────────────────────────────────────────────────
@@ -81,26 +55,36 @@ module Openclaw
     # Browse a directory inside resumes/. Returns folders and files.
     # +subpath+ is relative to resumes/, e.g. "base" or "tailored".
     def self.list_resumes(subpath = nil)
-      base = resumes_path
+      browse_directory(resumes_path, subpath)
+    end
+
+    def self.browse_directory(base, subpath = nil, allowed_extensions: nil)
       return { folders: [], files: [] } unless Dir.exist?(base)
 
       target = subpath.present? ? File.join(base, subpath) : base
 
-      # Safety: ensure we stay inside resumes/
-      real_target = File.realpath(target) rescue target
+      # Ensure path traversal and symlinks cannot escape the browser root.
+      real_target = File.realpath(target)
       real_base   = File.realpath(base)
-      raise "Access denied" unless real_target.start_with?(real_base)
+      raise "Access denied" unless real_target == real_base || real_target.start_with?("#{real_base}/")
       raise "Not a directory" unless File.directory?(real_target)
 
       entries = Dir.entries(real_target).reject { |e| e.start_with?(".") }.sort
 
-      folders = entries.select { |e| File.directory?(File.join(real_target, e)) }.map do |name|
+      folders = entries.filter_map do |name|
+        full = File.join(real_target, name)
+        next unless File.directory?(full)
+        next unless File.realpath(full).start_with?(real_base)
+
         rel = subpath.present? ? File.join(subpath, name) : name
         { name: name, path: rel }
       end
 
-      files = entries.reject { |e| File.directory?(File.join(real_target, e)) }.map do |name|
+      files = entries.filter_map do |name|
         full = File.join(real_target, name)
+        next unless File.file?(full)
+        next if allowed_extensions && !allowed_extensions.include?(File.extname(name).downcase)
+
         stat = File.stat(full)
         rel  = subpath.present? ? File.join(subpath, name) : name
         {
