@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, ChevronUp, ChevronDown, RotateCcw, GripVertical, Eye, EyeOff } from "lucide-react";
+import { X, RotateCcw, GripVertical, Eye, EyeOff } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "../../lib/utils";
 
@@ -7,20 +7,6 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
   const [localItems, setLocalItems] = useState(items);
 
   if (!open) return null;
-
-  const moveUp = (index) => {
-    if (index === 0) return;
-    const next = [...localItems];
-    [next[index - 1], next[index]] = [next[index], next[index - 1]];
-    setLocalItems(next);
-  };
-
-  const moveDown = (index) => {
-    if (index === localItems.length - 1) return;
-    const next = [...localItems];
-    [next[index], next[index + 1]] = [next[index + 1], next[index]];
-    setLocalItems(next);
-  };
 
   const resetToDefault = () => {
     setLocalItems(defaultItems);
@@ -71,8 +57,6 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
               >
                 {localItems.map((item, index) => {
                   const Icon = item.icon;
-                  const isFirst = index === 0;
-                  const isLast = index === localItems.length - 1;
 
                   return (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -90,16 +74,16 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
                             // Constrain drag to vertical only
                           }}
                         >
-                          {/* Drag handle */}
-                          <span
+                          {/* Most of the row is the drag handle; visibility stays clickable. */}
+                          <div
                             {...dragProvided.dragHandleProps}
-                            className="text-gray-600 cursor-grab active:cursor-grabbing shrink-0"
+                            className="flex flex-1 min-w-0 items-center gap-3 cursor-grab active:cursor-grabbing py-0.5"
+                            title={`Drag ${item.label} to reorder`}
                           >
-                            <GripVertical size={14} />
-                          </span>
-
-                          <Icon size={14} className="text-gray-400 shrink-0" />
-                          <span className="text-sm text-gray-300 flex-1 truncate">{item.label}</span>
+                            <GripVertical size={15} className="text-gray-500 shrink-0" />
+                            <Icon size={14} className="text-gray-400 shrink-0" />
+                            <span className="text-sm text-gray-300 truncate">{item.label}</span>
+                          </div>
                           <button
                             onClick={() => toggleVisibility(item.id)}
                             title={item.hidden ? `Show ${item.label}` : `Hide ${item.label}`}
@@ -111,32 +95,6 @@ export default function NavReorderModal({ open, items, onSave, onCancel, default
                           >
                             {item.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
                           </button>
-                          <div className="flex items-center gap-0.5">
-                            <button
-                              onClick={() => moveUp(index)}
-                              disabled={isFirst}
-                              className={cn(
-                                "p-1 rounded transition-colors",
-                                isFirst
-                                  ? "text-gray-700 cursor-not-allowed"
-                                  : "text-gray-500 hover:text-white hover:bg-gray-700"
-                              )}
-                            >
-                              <ChevronUp size={14} />
-                            </button>
-                            <button
-                              onClick={() => moveDown(index)}
-                              disabled={isLast}
-                              className={cn(
-                                "p-1 rounded transition-colors",
-                                isLast
-                                  ? "text-gray-700 cursor-not-allowed"
-                                  : "text-gray-500 hover:text-white hover:bg-gray-700"
-                              )}
-                            >
-                              <ChevronDown size={14} />
-                            </button>
-                          </div>
                         </div>
                       )}
                     </Draggable>
