@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
 import { documentsApi } from "../../api/documents";
 import { FileText, FolderOpen, Check, X, Edit3, Database, Search, Upload, AlertTriangle, Download, ChevronRight, ArrowLeft, Briefcase, Maximize2, Minimize2 } from "lucide-react";
 import ErrorBoundary from "../../components/ui/ErrorBoundary";
@@ -122,7 +123,32 @@ function DocViewer({ doc, onClose, allowDownload = false }) {
       ) : (
         <div className="flex-1 overflow-y-auto p-5">
           {isMarkdown ? (
-            <pre className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed font-mono">{content}</pre>
+            <article className="max-w-5xl text-gray-300 leading-7">
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => <h1 className="text-3xl font-bold tracking-tight text-white mt-2 mb-6 pb-3 border-b border-gray-700">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-2xl font-semibold tracking-tight text-white mt-10 mb-4 pb-2 border-b border-gray-800">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-xl font-semibold text-gray-100 mt-8 mb-3">{children}</h3>,
+                  h4: ({ children }) => <h4 className="text-base font-semibold uppercase tracking-wide text-orange-300 mt-6 mb-2">{children}</h4>,
+                  p: ({ children }) => <p className="my-4 text-[15px] text-gray-300 leading-7">{children}</p>,
+                  ul: ({ children }) => <ul className="my-4 ml-6 list-disc space-y-2 marker:text-orange-400">{children}</ul>,
+                  ol: ({ children }) => <ol className="my-4 ml-6 list-decimal space-y-2 marker:text-orange-400">{children}</ol>,
+                  li: ({ children }) => <li className="pl-1 text-[15px] text-gray-300">{children}</li>,
+                  a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-orange-400 underline decoration-orange-500/40 underline-offset-2 hover:text-orange-300">{children}</a>,
+                  blockquote: ({ children }) => <blockquote className="my-5 border-l-4 border-orange-500/60 bg-gray-800/40 px-4 py-1 text-gray-400 italic">{children}</blockquote>,
+                  code: ({ className, children }) => className ? (
+                    <code className={`${className} text-sm text-gray-200`}>{children}</code>
+                  ) : (
+                    <code className="rounded bg-gray-800 px-1.5 py-0.5 font-mono text-[0.9em] text-orange-300">{children}</code>
+                  ),
+                  pre: ({ children }) => <pre className="my-5 overflow-x-auto rounded-lg border border-gray-700 bg-gray-950 p-4 font-mono text-sm leading-6">{children}</pre>,
+                  hr: () => <hr className="my-8 border-gray-700" />,
+                  strong: ({ children }) => <strong className="font-semibold text-gray-100">{children}</strong>,
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </article>
           ) : (
             <pre className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed font-mono">{content}</pre>
           )}
