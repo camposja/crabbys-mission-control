@@ -12,6 +12,12 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    # Majors are upgrades, not maintenance: they need a person to read the
+    # changelog and check the app still behaves. Security fixes still arrive
+    # regardless of this rule.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       ruby-minor-and-patch:
         patterns: ["*"]
@@ -24,6 +30,9 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       frontend-minor-and-patch:
         patterns: ["*"]

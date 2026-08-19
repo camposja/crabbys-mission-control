@@ -2,12 +2,16 @@
 # where GitHub never ran it, and its steps assumed the repo root was backend/.
 #
 # Every step below is green on main as of this commit — no continue-on-error and
-# nothing is skipped. Three checks are deliberately NOT gates yet because they
-# have pre-existing findings that need review rather than a rubber stamp:
-#   * eslint    — 2 react-hooks/set-state-in-effect errors (Sidebar, PlanningModal)
-#   * rubocop   — 241 style offenses; needs a reviewed .rubocop_todo.yml first
-#   * brakeman  — 3 warnings (permit!, send_file/File path from params)
-# Fix those and add them here; do not paper over them with continue-on-error.
+# nothing is skipped. Two checks are still NOT gates, for stated reasons:
+#   * rubocop  — 241 pre-existing style offenses. Changed files are linted by
+#               hand; adding it here needs a reviewed .rubocop_todo.yml first.
+#   * brakeman — down to a single weak-confidence SendFile warning on the resume
+#               download, which is inherent to letting a person choose a file by
+#               name. The path is picked from a directory listing and specs cover
+#               traversal, sibling-prefix and symlink escapes; run
+#               `bundle exec brakeman` to review it. It is left out rather than
+#               silenced with an ignore entry.
+# Do not paper over either of them with continue-on-error.
 name: CI
 
 on:
@@ -42,6 +46,9 @@ jobs:
 
       - name: Report any ignored dependency build scripts
         run: corepack pnpm ignored-builds
+
+      - name: Lint
+        run: corepack pnpm lint
 
       - name: Tests
         run: corepack pnpm test
