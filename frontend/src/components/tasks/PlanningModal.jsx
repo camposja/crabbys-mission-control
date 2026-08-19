@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { X, Loader2, CheckCircle, ChevronRight, Bot } from "lucide-react";
 import { tasksApi } from "../../api/tasks";
@@ -6,7 +6,14 @@ import { cn } from "../../lib/utils";
 
 const STEPS = { QUESTIONS: "questions", PLAN: "plan", DONE: "done" };
 
-export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
+// Keying the body by task id gives every task a fresh instance, so switching
+// tasks resets the wizard through component identity instead of a setState
+// cascade inside an effect.
+export default function PlanningModal(props) {
+  return <PlanningModalBody key={props.task.id} {...props} />;
+}
+
+function PlanningModalBody({ task, onApproved, onSkip, onClose }) {
   const [step, setStep] = useState(STEPS.QUESTIONS);
   const [answers, setAnswers] = useState([]);
   const [plan, setPlan] = useState("");
@@ -55,18 +62,15 @@ export default function PlanningModal({ task, onApproved, onSkip, onClose }) {
     },
   });
 
+  // Fetch the clarifying questions once per mounted modal. State starts at its
+  // initial values because this component is remounted per task, so there is
+  // nothing to reset here.
+  const requested = useRef(false);
   useEffect(() => {
-    setStep(STEPS.QUESTIONS);
-    setQuestions([]);
-    setAnswers([]);
-    setPlan("");
-    setError(null);
-    questionsMutation.reset();
-    planMutation.reset();
-    approveMutation.reset();
+    if (requested.current) return;
+    requested.current = true;
     questionsMutation.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task.id]);
+  }, [questionsMutation]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">

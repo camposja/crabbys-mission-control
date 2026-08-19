@@ -64,9 +64,9 @@ module Openclaw
       target = subpath.present? ? File.join(base, subpath) : base
 
       # Ensure path traversal and symlinks cannot escape the browser root.
-      real_target = File.realpath(target)
       real_base   = File.realpath(base)
-      raise "Access denied" unless real_target == real_base || real_target.start_with?("#{real_base}/")
+      real_target = File.realpath(target)
+      raise "Access denied" unless SafePath.contained?(real_target, real_base)
       raise "Not a directory" unless File.directory?(real_target)
 
       entries = Dir.entries(real_target).reject { |e| e.start_with?(".") }.sort
@@ -74,7 +74,7 @@ module Openclaw
       folders = entries.filter_map do |name|
         full = File.join(real_target, name)
         next unless File.directory?(full)
-        next unless File.realpath(full).start_with?(real_base)
+        next unless SafePath.contained?(File.realpath(full), real_base)
 
         rel = subpath.present? ? File.join(subpath, name) : name
         { name: name, path: rel }
@@ -122,8 +122,7 @@ module Openclaw
     BINARY_PREVIEW_TYPES = %w[.pdf].freeze
 
     def self.read_file(path)
-      real = File.realpath(path)
-      raise "Access denied" unless real.start_with?(File.realpath(WORKSPACE_ROOT))
+      real = SafePath.realpath_within!(path, WORKSPACE_ROOT)
 
       ext = File.extname(real).downcase
 
@@ -160,8 +159,7 @@ module Openclaw
 
     # Write back to a workspace file
     def self.write_file(path, content)
-      real = File.realpath(path)
-      raise "Access denied" unless real.start_with?(File.realpath(WORKSPACE_ROOT))
+      real = SafePath.realpath_within!(path, WORKSPACE_ROOT)
       File.write(real, content)
     end
 

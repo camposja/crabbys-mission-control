@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { NavLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, ListTodo, FolderKanban, Brain,
@@ -112,10 +112,11 @@ export default function Sidebar() {
   const [navOrder, setNavOrder] = useState(loadNavOrder);
   const [isReorderOpen, setIsReorderOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
 
-  // Close mobile nav on route change
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  // The mobile drawer closes on the events that dismiss it — tapping a nav link,
+  // the overlay, or the hamburger — rather than by syncing state to the route in
+  // an effect.
+  const closeMobileNav = () => setMobileOpen(false);
 
   return (
     <>
@@ -130,7 +131,7 @@ export default function Sidebar() {
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setMobileOpen(false)} />
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={closeMobileNav} />
       )}
 
       <aside className={cn(
@@ -156,6 +157,7 @@ export default function Sidebar() {
             key={id}
             to={to}
             end={to === "/"}
+            onClick={closeMobileNav}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
@@ -174,7 +176,7 @@ export default function Sidebar() {
       {/* Edit Nav button */}
       <div className="px-3 py-2 border-t border-gray-800">
         <button
-          onClick={() => setIsReorderOpen(true)}
+          onClick={() => { closeMobileNav(); setIsReorderOpen(true); }}
           className="flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
         >
           <Pencil size={12} />

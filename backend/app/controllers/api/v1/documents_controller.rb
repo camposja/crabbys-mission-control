@@ -71,19 +71,19 @@ module Api
       DOWNLOADABLE_EXTENSIONS = %w[.doc .txt].freeze
 
       def download
-        path = params[:path].to_s
-        raise "Path required" if path.blank?
+        requested = params[:path].to_s
+        raise "Path required" if requested.blank?
 
-        real = File.realpath(path)
-        resumes_root = File.realpath(::Openclaw::WorkspaceReader.resumes_path)
-        raise "Access denied — downloads restricted to resumes" unless real.start_with?(resumes_root)
-        raise "File not found" unless File.exist?(real)
-        raise "Not a file" unless File.file?(real)
+        root       = File.realpath(::Openclaw::WorkspaceReader.resumes_path)
+        candidates = downloadable_resumes(root)
+        index      = candidates.index { |candidate| names_same_file?(candidate, root, requested) }
+        raise "Access denied — only #{DOWNLOADABLE_EXTENSIONS.join(', ')} files inside resumes/ can be downloaded" if index.nil?
 
-        ext = File.extname(real).downcase
-        raise "Download not allowed for #{ext} files. Only #{DOWNLOADABLE_EXTENSIONS.join(', ')} are downloadable." unless DOWNLOADABLE_EXTENSIONS.include?(ext)
-
-        send_file real, filename: File.basename(real), disposition: "attachment"
+        # Comes from the directory listing, never from the parameter.
+        entry = candidates.fetch(index)
+        send_file entry, filename: File.basename(entry), disposition: "attachment"
+      rescue Errno::ENOENT
+        render json: { error: "No resumes directory to download from" }, status: :unprocessable_entity
       rescue => e
         render json: { error: e.message }, status: :unprocessable_entity
       end
@@ -117,24 +117,56 @@ module Api
         file = params[:file]
         raise "No file provided" unless file.present?
 
-        ext = File.extname(file.original_filename).downcase
-        raise "File type #{ext} not allowed. Allowed: #{ALLOWED_UPLOAD_TYPES.join(', ')}" unless ALLOWED_UPLOAD_TYPES.include?(ext)
+        ext = File.extname(file.original_filename.to_s).downcase
+        raise "File type #{ext.presence || '(none)'} not allowed. Allowed: #{ALLOWED_UPLOAD_TYPES.join(', ')}" unless ALLOWED_UPLOAD_TYPES.include?(ext)
         raise "File too large (max 5MB)" if file.size > MAX_UPLOAD_BYTES
 
-        # Sanitize filename — strip path components and non-safe chars
-        safe_name = File.basename(file.original_filename).gsub(/[^\w.\-]/, "_")
-        dest_path = File.join(
-          ENV.fetch("OPENCLAW_HOME", File.expand_path("~/.openclaw")),
-          "workspace", safe_name
-        )
+        # Strip directories, traversal and exotic characters, then prove the
+        # destination really is inside the workspace before writing anything.
+        safe_name = SafePath.sanitized_basename(file.original_filename)
+        raise "Filename is not usable" if safe_name.nil?
 
-        FileUtils.mkdir_p(File.dirname(dest_path))
+        workspace = ::Openclaw::WorkspaceReader.workspace_path
+        FileUtils.mkdir_p(workspace)
+        dest_path = SafePath.join_within!(workspace, safe_name)
+
         IO.copy_stream(file.tempfile, dest_path)
 
         ::EventStore.emit(type: "document_uploaded", message: "Document uploaded: #{safe_name}")
         render json: { path: dest_path, name: safe_name, size: file.size }, status: :created
       rescue => e
         render json: { error: e.message }, status: :unprocessable_entity
+      end
+
+      private
+
+      # Does this candidate from the listing answer to the name the request used?
+      # Comparison only — the parameter never becomes a path. Traversal
+      # ("../../etc/passwd"), sibling-prefix paths ("…/resumes-evil/x.txt") and
+      # symlinks pointing outside resumes/ have no matching candidate at all.
+      def names_same_file?(candidate, root, requested)
+        prefix = root + File::SEPARATOR
+        return true if candidate == requested
+        return true if candidate.delete_prefix(prefix) == requested.delete_prefix(prefix)
+
+        # A client may name the same file through a symlinked parent (on macOS
+        # /var is a link to /private/var, for example). Comparison only: the
+        # resolved value is never used as a path, and it has to equal a listed
+        # candidate, so traversal, sibling-prefix and escaping symlinks still
+        # resolve to something that is not on the list.
+        File.exist?(requested) && File.realpath(requested) == candidate
+      rescue SystemCallError
+        false
+      end
+
+      def downloadable_resumes(root)
+        Dir.glob(File.join(root, "**", "*")).select do |candidate|
+          next false unless File.file?(candidate)
+          next false unless DOWNLOADABLE_EXTENSIONS.include?(File.extname(candidate).downcase)
+
+          # Drops symlinks inside resumes/ that resolve outside it.
+          SafePath.contained?(File.realpath(candidate), root)
+        end
       end
     end
   end
