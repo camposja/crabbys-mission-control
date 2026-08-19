@@ -10,3 +10,11 @@ allowBuilds: {}
 # tree declares a preinstall/install/postinstall script — Vite 8 uses Rolldown,
 # not esbuild. strictDepBuilds:true will hard-fail the install if any future
 # dependency adds a build script; review it and add `name: true` here only then.
+
+# Security patches for transitive deps whose parents pin an older patch line.
+# Same major version in every case — these are patches, not upgrades. Each is
+# still subject to minimumReleaseAge above.
+overrides:
+  js-yaml@^4: ^4.3.1              # eslint > @eslint/eslintrc (GHSA prototype/DoS fixes)
+  brace-expansion@^1: ^1.1.18     # eslint > minimatch (ReDoS)
+  "@babel/core@^7": ^7.29.6       # eslint-plugin-react-hooks (file read via sourceMappingURL)
