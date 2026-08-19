@@ -38,6 +38,13 @@ require_relative "../lib/bind_address"
 
 port ENV.fetch("PORT", 3002), BindAddress.resolve
 
+# A file-level bind is not enough on its own: when a host or port is supplied on
+# the command line (`rails server -b …`, `--binding`, BINDING=…, `puma -b …`) the
+# Rack handler calls `clear_binds!` and replaces it. This plugin re-checks the
+# FINAL bind list just before the binder opens any socket.
+$LOAD_PATH.unshift File.expand_path("../lib/puma_plugins", __dir__)
+plugin :loopback_guard
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 

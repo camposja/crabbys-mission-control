@@ -26,7 +26,9 @@ module Backend
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    # puma_plugins/ holds Puma plugin files, which register themselves on require
+    # and follow Puma's own path convention rather than Zeitwerk's.
+    config.autoload_lib(ignore: %w[assets tasks puma_plugins])
 
     # Configuration for the application, engines, and railties goes here.
     #

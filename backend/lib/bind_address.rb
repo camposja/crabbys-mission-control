@@ -63,4 +63,40 @@ module BindAddress
     host = env["RAILS_BIND"].to_s.strip
     host.empty? ? DEFAULT : host
   end
+
+  # Host portion of a Puma bind URI: "tcp://127.0.0.1:3002" -> "127.0.0.1",
+  # "ssl://[::1]:3002?key=..." -> "::1". Returns nil for unix/abstract sockets,
+  # which are filesystem-local and cannot be reached over the network.
+  def self.host_from_bind(bind)
+    uri = bind.to_s.strip
+    return nil if uri.start_with?("unix://", "@")
+
+    authority = uri.sub(%r{\A[a-z][a-z0-9+.-]*://}i, "").split("?").first.to_s
+    if (m = authority.match(/\A\[([^\]]+)\]/))   # bracketed IPv6
+      m[1]
+    else
+      authority.split(":").first
+    end
+  end
+
+  # Enforces the policy against the FINAL binds Puma resolved, after Rails' CLI
+  # flags (-b/--binding), the BINDING env var and any `puma -b` have been merged
+  # in. config/puma.rb alone cannot do this: the Rack handler calls
+  # `clear_binds!` and replaces the file-level bind whenever a host or port is
+  # supplied by the caller, so a file-level guard is bypassable by design.
+  #
+  # @raise [LanBindNotAllowed] any non-loopback bind without both opt-ins
+  def self.assert_binds_allowed!(binds, env = ENV)
+    offenders = Array(binds).reject do |bind|
+      host = host_from_bind(bind)
+      host.nil? || loopback?(host)
+    end
+    return binds if offenders.empty? || allow_lan?(env)
+
+    raise LanBindNotAllowed,
+      "Refusing to start: #{offenders.join(', ')} would expose the API and the Terminal " \
+      "(which runs shell commands as your user) beyond this machine. Bind to 127.0.0.1 " \
+      "instead, or opt in deliberately with RAILS_BIND plus MISSION_CONTROL_ALLOW_LAN=true " \
+      "on a trusted network only."
+  end
 end
