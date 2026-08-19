@@ -66,6 +66,17 @@ describe("resolveBackendTarget", () => {
     expect(t.isRemoteHost).toBe(false); // page itself was loopback
   });
 
+  it("VITE_BIND alone does not retarget the API away from localhost", () => {
+    const t = resolveBackendTarget({
+      hostname: "192.168.1.20",
+      protocol: "http:",
+      env: { VITE_BIND: "0.0.0.0" },
+    });
+    expect(t.apiUrl).toBe("http://localhost:3000/api/v1");
+    expect(t.cableUrl).toBe("ws://localhost:3000/cable");
+    expect(t.isLanMode).toBe(false);
+  });
+
   it("explicit localhost override is not LAN mode", () => {
     const t = resolveBackendTarget({
       hostname: "localhost",

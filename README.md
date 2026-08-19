@@ -27,17 +27,25 @@ cd crabbys-mission-control
 ./setup.sh
 ```
 
-Then in two terminals:
+Then in two terminals — both bind explicitly to loopback:
 
 ```bash
-# Terminal 1
-cd backend && bundle exec rails server -p 3000
+# Terminal 1 — Rails API on 127.0.0.1:3000
+cd backend && RAILS_BIND=127.0.0.1 bundle exec rails server -b 127.0.0.1 -p 3000
 
-# Terminal 2
-cd frontend && pnpm dev
+# Terminal 2 — Vite UI on 127.0.0.1:5173
+cd frontend && VITE_BIND=127.0.0.1 pnpm dev --host 127.0.0.1
 ```
 
 Open **http://localhost:5173**
+
+Or run both at once with `foreman start -f Procfile.dev` (the Procfile already
+passes the explicit loopback binds above).
+
+> **Package manager:** the frontend uses **pnpm** (pinned via `packageManager`).
+> Never run `npm install` / `yarn` in `frontend/` — it would bypass the
+> supply-chain policy in `frontend/pnpm-workspace.yaml` and write a stray
+> `package-lock.json`.
 
 ---
 
@@ -50,6 +58,7 @@ Open **http://localhost:5173**
 | `OPENCLAW_GATEWAY_URL` | `http://localhost:18789` | OpenClaw gateway URL |
 | `OPENCLAW_GATEWAY_TOKEN` | — | **Required** — token from `~/.openclaw/openclaw.json` |
 | `RAILS_PORT` | `3000` | Rails server port |
+| `RAILS_BIND` | `127.0.0.1` | Interface Rails binds to. A non-loopback value is **refused at boot** unless `MISSION_CONTROL_ALLOW_LAN=true` |
 | `DATABASE_URL` | *(from database.yml)* | Override Postgres connection |
 | `MISSION_CONTROL_ALLOW_LAN` | `false` | Opt into LAN mode — allow CORS from private/Tailscale frontend origins (see below) |
 
@@ -59,6 +68,7 @@ Open **http://localhost:5173**
 |---|---|---|
 | `VITE_API_URL` | `http://localhost:3000/api/v1` | Rails API base URL (explicit override) |
 | `VITE_CABLE_URL` | `ws://localhost:3000/cable` | Action Cable WebSocket URL (explicit override) |
+| `VITE_BIND` | `127.0.0.1` | Interface the Vite dev/preview server binds to. A non-loopback value is **refused at startup** unless `VITE_ENABLE_LAN_MODE=true` |
 | `VITE_ENABLE_LAN_MODE` | `false` | Opt into LAN mode — derive the backend URL from the page host (see below) |
 
 ---
@@ -67,18 +77,27 @@ Open **http://localhost:5173**
 
 Mission Control is a no-login local operator app, so it is **localhost-only by default**:
 
+- Rails binds to `127.0.0.1` (`RAILS_BIND`, enforced in `backend/lib/bind_address.rb`).
+- Vite binds to `127.0.0.1` (`VITE_BIND`, enforced in `frontend/src/lib/devServer.js`) —
+  explicitly, not by relying on Vite's implicit default.
 - The frontend always talks to `http://localhost:3000`, even if you open it from a LAN URL —
   nothing silently targets the LAN.
 - Rails CORS allows only `localhost` frontend origins.
 
+Asking either server for a non-loopback interface **without** the matching LAN flag is a hard
+error at startup, not a warning — accidental exposure is the failure mode this app is designed
+against.
+
 **LAN mode (opt-in).** To reach Mission Control from another device on a trusted network
-(home LAN, Tailscale, or an SSH tunnel), set **both** flags and restart **both** servers:
+(home LAN, Tailscale, or an SSH tunnel), set **all four** values and restart **both** servers:
 
 ```bash
 # backend/.env
+RAILS_BIND=0.0.0.0                 # bind beyond loopback (refused without the flag below)
 MISSION_CONTROL_ALLOW_LAN=true     # CORS allows 192.168.* / 10.* / 172.16-31.* / Tailscale 100.64.0.0/10 (100.64–100.127.x.x) / *.ts.net on :5173
 
 # frontend/.env.local
+VITE_BIND=0.0.0.0                  # serve the UI beyond loopback (refused without the flag below)
 VITE_ENABLE_LAN_MODE=true          # frontend derives the backend URL from the page host
 ```
 
@@ -87,10 +106,11 @@ notice. Notes:
 
 - `VITE_*` vars are baked in at **build** time — the dev server picks up changes on restart,
   but a production build must be **rebuilt**.
-- Use only on trusted networks. **CORS is not an auth boundary** — it only restricts browsers.
-  Protecting state-changing endpoints from direct (non-browser) callers is a separate concern
-  (the OpenClaw webhook already requires a token or loopback; a follow-up will do the same for
-  the Terminal/exec endpoints).
+- Use only on trusted networks. **CORS is not an auth boundary** — it only restricts browsers,
+  and LAN exposure hands everyone on the network the **Terminal page, which runs shell commands
+  as your macOS user**. Protecting state-changing endpoints from direct (non-browser) callers is
+  a separate concern (the OpenClaw webhook already requires a token or loopback; a follow-up will
+  do the same for the Terminal/exec endpoints).
 
 ---
 

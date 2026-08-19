@@ -82,7 +82,16 @@ echo ""
 echo "📦  Installing Node dependencies…"
 cd frontend
 
-mise exec -- pnpm install --silent
+# pnpm is pinned by frontend/package.json ("packageManager"). Use a real pnpm if
+# one is on PATH, otherwise let corepack (shipped with the mise-managed Node)
+# fetch the pinned version. NEVER npm/yarn here — that bypasses pnpm-workspace.yaml.
+if command -v pnpm &>/dev/null; then
+  PNPM=(pnpm)
+else
+  PNPM=(mise exec -- corepack pnpm)
+fi
+
+"${PNPM[@]}" install --silent
 
 if [ ! -f ".env.local" ]; then
   printf "VITE_API_URL=http://localhost:%s/api/v1\nVITE_CABLE_URL=ws://localhost:%s/cable\n" \
@@ -98,15 +107,19 @@ cd ..
 echo ""
 echo "✅  Setup complete!"
 echo ""
-echo "To start the app, run TWO terminals:"
+echo "To start the app, run TWO terminals (both bound to loopback only):"
 echo ""
-echo "  Terminal 1 (Rails API on port $RAILS_PORT):"
-echo "    cd backend && mise exec -- bundle exec rails server -p $RAILS_PORT"
+echo "  Terminal 1 (Rails API on 127.0.0.1:$RAILS_PORT):"
+echo "    cd backend && RAILS_BIND=127.0.0.1 mise exec -- bundle exec rails server -b 127.0.0.1 -p $RAILS_PORT"
 echo ""
-echo "  Terminal 2 (React frontend on port $REACT_PORT):"
-echo "    cd frontend && pnpm dev"
+echo "  Terminal 2 (React frontend on 127.0.0.1:$REACT_PORT):"
+echo "    cd frontend && VITE_BIND=127.0.0.1 pnpm dev --host 127.0.0.1 --port $REACT_PORT"
 echo ""
 echo "  Then open: http://localhost:$REACT_PORT"
+echo ""
+echo "  Both servers refuse a non-loopback bind unless you deliberately opt in"
+echo "  (MISSION_CONTROL_ALLOW_LAN=true / VITE_ENABLE_LAN_MODE=true). LAN mode gives"
+echo "  everyone on the network the Terminal page, which runs shell commands as you."
 echo ""
 # Remind if token is still a placeholder
 if grep -q "your_token_here" backend/.env 2>/dev/null; then

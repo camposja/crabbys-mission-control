@@ -173,21 +173,21 @@ module Api
       end
 
       def audit_network_binding
-        # Check if the Rails server appears to be bound beyond localhost
-        # We can only inspect the currently-known host
-        bound_host = ENV.fetch("RAILS_BIND", "127.0.0.1")
-        if bound_host == "0.0.0.0" || bound_host == "::"
+        # Same resolution the server boots with (see lib/bind_address.rb and
+        # config/puma.rb), so the page can never disagree with the real bind.
+        bound_host = BindAddress.configured
+        if BindAddress.loopback?(bound_host)
+          [{ id: "network_binding", title: "Network binding OK (localhost only)",
+             severity: "ok", detail: "Bound to #{bound_host}", category: "network" }]
+        else
           [{
             id:       "network_binding",
-            title:    "Server appears to be bound to all interfaces",
+            title:    "Server is bound beyond localhost",
             severity: "critical",
             detail:   "RAILS_BIND=#{bound_host} — this exposes the terminal and all APIs to the network.",
             fix:      "Set RAILS_BIND=127.0.0.1 in your startup command or .env file.",
             category: "network"
           }]
-        else
-          [{ id: "network_binding", title: "Network binding OK (localhost only)",
-             severity: "ok", detail: "Bound to #{bound_host}", category: "network" }]
         end
       end
 

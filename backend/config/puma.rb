@@ -28,8 +28,15 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
+# Specifies the `port` and the interface Puma listens on.
+#
+# The bind host is resolved by lib/bind_address.rb: loopback (127.0.0.1) unless
+# RAILS_BIND names another interface AND MISSION_CONTROL_ALLOW_LAN=true, which
+# is refused otherwise — the Terminal endpoints execute shell commands as this
+# user, so accidental LAN exposure is the failure mode we design against.
+require_relative "../lib/bind_address"
+
+port ENV.fetch("PORT", 3000), BindAddress.resolve
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
