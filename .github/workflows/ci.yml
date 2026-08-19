@@ -1,3 +1,13 @@
+# Repository-root CI. The previous copy lived at backend/.github/workflows/ci.yml,
+# where GitHub never ran it, and its steps assumed the repo root was backend/.
+#
+# Every step below is green on main as of this commit — no continue-on-error and
+# nothing is skipped. Three checks are deliberately NOT gates yet because they
+# have pre-existing findings that need review rather than a rubber stamp:
+#   * eslint    — 2 react-hooks/set-state-in-effect errors (Sidebar, PlanningModal)
+#   * rubocop   — 241 style offenses; needs a reviewed .rubocop_todo.yml first
+#   * brakeman  — 3 warnings (permit!, send_file/File path from params)
+# Fix those and add them here; do not paper over them with continue-on-error.
 name: CI
 
 on:
@@ -6,28 +16,66 @@ on:
     branches: [ main ]
 
 jobs:
-  scan_ruby:
+  frontend:
+    name: Frontend (pnpm)
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Scan for common Rails security vulnerabilities using static analysis
-        run: bin/brakeman --no-pager
-      
-      - name: Scan for known security vulnerabilities in gems used
-        run: bin/bundler-audit
-      
-  lint:
-    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     env:
-      RUBOCOP_CACHE_ROOT: tmp/rubocop
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # pnpm always comes from Corepack, pinned by packageManager in package.json.
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies (frozen lockfile)
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Report any ignored dependency build scripts
+        run: corepack pnpm ignored-builds
+
+      - name: Tests
+        run: corepack pnpm test
+
+      - name: Production build
+        run: corepack pnpm build
+
+      - name: Audit dependencies
+        run: corepack pnpm audit
+
+  ruby:
+    name: Backend (Rails)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RAILS_ENV: test
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -36,17 +84,16 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+          working-directory: backend
 
-      - name: Prepare RuboCop cache
-        uses: actions/cache@v4
-        env:
-          DEPENDENCIES_HASH: ${{ hashFiles('.ruby-version', '**/.rubocop.yml', '**/.rubocop_todo.yml', 'Gemfile.lock') }}
-        with:
-          path: ${{ env.RUBOCOP_CACHE_ROOT }}
-          key: rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-${{ github.ref_name == github.event.repository.default_branch && github.run_id || 'default' }}
-          restore-keys: |
-            rubocop-${{ runner.os }}-${{ env.DEPENDENCIES_HASH }}-
+      - name: Verify the bundle is installed
+        run: bundle check
 
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
+      - name: Prepare the test database
+        run: bin/rails db:test:prepare
 
+      - name: Specs
+        run: bundle exec rspec
+
+      - name: Scan for known security vulnerabilities in gems used
+        run: bundle exec bundler-audit check --update

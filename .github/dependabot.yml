@@ -1,12 +1,40 @@
+# Repository-root Dependabot config. The previous copy lived at
+# backend/.github/dependabot.yml, where GitHub never read it.
+#
+# Deliberately low-noise: weekly, grouped into one PR per ecosystem for
+# minor/patch updates, a small PR cap, and majors left ungrouped so they get
+# reviewed individually. Nothing here merges automatically.
 version: 2
 updates:
-- package-ecosystem: bundler
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
-- package-ecosystem: github-actions
-  directory: "/"
-  schedule:
-    interval: weekly
-  open-pull-requests-limit: 10
+  - package-ecosystem: bundler
+    directory: "/backend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      ruby-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # pnpm lockfiles are handled by the npm ecosystem.
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      frontend-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
