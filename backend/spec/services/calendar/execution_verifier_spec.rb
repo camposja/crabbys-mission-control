@@ -147,9 +147,11 @@ RSpec.describe Calendar::ExecutionVerifier do
       end
     end
 
-    context "when event has a task_id but the task record was deleted" do
+    context "when the associated task record was deleted" do
       let(:task) { create(:task) }
-      let(:event) { create(:calendar_event, :past, :with_task, task: task, status: "scheduled") }
+      # let! so the event exists BEFORE the task is destroyed — the association is
+      # ON DELETE NULLIFY, so creating it afterwards would violate the foreign key.
+      let!(:event) { create(:calendar_event, :past, :with_task, task: task, status: "scheduled") }
 
       before { task.destroy! }
 

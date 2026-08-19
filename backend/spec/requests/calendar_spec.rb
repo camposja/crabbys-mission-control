@@ -116,6 +116,12 @@ RSpec.describe "Calendar API", type: :request do
   # ── GET /api/v1/calendar/cron_jobs ─────────────────────────────────────────
   describe "GET /api/v1/calendar/cron_jobs" do
     before do
+      # These examples cover the local-DB fallback, so the live gateway read has
+      # to fail. Without this the shared `rpc` stub only accepts "health" and the
+      # controller's "cron.list" call raises an unexpected-arguments error.
+      allow_any_instance_of(Openclaw::GatewayClient).to receive(:rpc)
+        .with("cron.list").and_raise(Openclaw::GatewayError.new("gateway unavailable"))
+
       create(:cron_job, name: "Alpha job", cron_expression: "0 * * * *")
       create(:cron_job, :failed, name: "Beta job")
       create(:cron_job, :with_task, name: "Gamma job")

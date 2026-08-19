@@ -40,11 +40,6 @@ export default function TodosPage() {
     onSuccess: invalidate,
   });
 
-  const reorderMutation = useMutation({
-    mutationFn: ({ id, position }) => personalTodosApi.update(id, { position }),
-    onSuccess: invalidate,
-  });
-
   const moveItem = (index, direction) => {
     const swapIndex = index + direction;
     if (swapIndex < 0 || swapIndex >= pending.length) return;

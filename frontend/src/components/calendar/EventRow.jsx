@@ -22,8 +22,6 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export { EVENT_STATUS, SOURCE_LABELS, formatTime };
-
 export default function EventRow({ event, onClick, showProject = false }) {
   const status = EVENT_STATUS[event.status] || EVENT_STATUS.scheduled;
 

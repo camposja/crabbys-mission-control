@@ -9,7 +9,7 @@ export function useCalendarChannel() {
   const qc = useQueryClient();
   const [connected, setConnected] = useState(false);
   const qcRef = useRef(qc);
-  qcRef.current = qc;
+  useEffect(() => { qcRef.current = qc; }, [qc]);
 
   useEffect(() => {
     const unsubscribe = subscribe("CalendarRemindersChannel", {

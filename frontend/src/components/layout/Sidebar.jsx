@@ -12,7 +12,7 @@ import { cn } from "../../lib/utils";
 import { dashboardApi } from "../../api/dashboard";
 import NavReorderModal from "./NavReorderModal";
 
-export const NAV_ITEMS = [
+const NAV_ITEMS = [
   { id: "dashboard",      to: "/",                icon: LayoutDashboard,   label: "Dashboard"        },
   { id: "tasks",          to: "/tasks",           icon: ListTodo,          label: "Tasks"             },
   { id: "projects",       to: "/projects",        icon: FolderKanban,      label: "Projects"          },
