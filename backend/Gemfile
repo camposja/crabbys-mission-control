@@ -42,7 +42,7 @@ gem "websocket", "~> 1.2"
 gem "dotenv-rails", groups: [:development, :test]
 
 # Background jobs
-gem "sidekiq", "~> 7.0"
+gem "sidekiq", "~> 7.3"
 
 # Vector search via pgvector
 gem "pgvector"
@@ -79,4 +79,4 @@ group :development, :test do
   gem "shoulda-matchers", "~> 6.0"
   gem "webmock"                       # stub HTTP calls (gateway) in tests
 end
-gem "fugit", "~> 1.12"
+gem "fugit", "~> 1.13"
