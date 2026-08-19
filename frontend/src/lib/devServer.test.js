@@ -36,6 +36,12 @@ describe("resolveDevServerHost", () => {
     }
   });
 
+  it("keeps dev and preview working on the default and on loopback overrides", () => {
+    expect(resolveDevServerHost({})).toBe("127.0.0.1");
+    expect(resolveDevServerHost({ VITE_BIND: "::1" })).toBe("::1");
+    expect(resolveDevServerHost({ VITE_BIND: "localhost" })).toBe("localhost");
+  });
+
   it("allows a LAN bind only when both opt-ins are explicit", () => {
     expect(
       resolveDevServerHost({ VITE_BIND: "0.0.0.0", VITE_ENABLE_LAN_MODE: "true" })
@@ -73,10 +79,56 @@ describe("assertResolvedHostAllowed", () => {
     }
   });
 
-  it("allows a LAN host only with VITE_ENABLE_LAN_MODE=true", () => {
-    expect(() => assertResolvedHostAllowed("0.0.0.0", { VITE_ENABLE_LAN_MODE: "1" })).toThrow();
-    expect(assertResolvedHostAllowed("0.0.0.0", { VITE_ENABLE_LAN_MODE: "true" })).toBe("0.0.0.0");
-    expect(assertResolvedHostAllowed(true, { VITE_ENABLE_LAN_MODE: "true" })).toBe(true);
+  // Two keys, and they have to agree. The flag on its own used to be enough,
+  // which let `vite --host 0.0.0.0` decide the exposure by itself.
+  it("rejects the LAN flag alone plus a CLI host", () => {
+    expect(() => assertResolvedHostAllowed("0.0.0.0", { VITE_ENABLE_LAN_MODE: "true" }))
+      .toThrow(/BOTH keys/);
+  });
+
+  it("rejects VITE_BIND alone", () => {
+    expect(() => assertResolvedHostAllowed("0.0.0.0", { VITE_BIND: "0.0.0.0" })).toThrow();
+  });
+
+  it("rejects a VITE_BIND that does not match the final host", () => {
+    expect(() =>
+      assertResolvedHostAllowed("192.168.4.158", { VITE_BIND: "0.0.0.0", VITE_ENABLE_LAN_MODE: "true" })
+    ).toThrow();
+    expect(() =>
+      assertResolvedHostAllowed("0.0.0.0", { VITE_BIND: "192.168.4.158", VITE_ENABLE_LAN_MODE: "true" })
+    ).toThrow();
+  });
+
+  it("rejects a blank or missing VITE_BIND even with the flag", () => {
+    for (const bind of ["", "   ", undefined]) {
+      expect(() =>
+        assertResolvedHostAllowed("0.0.0.0", { VITE_BIND: bind, VITE_ENABLE_LAN_MODE: "true" })
+      ).toThrow();
+    }
+  });
+
+  it("requires the flag to be exactly \"true\"", () => {
+    for (const flag of ["1", "yes", "TRUE", "True", " true "]) {
+      expect(() =>
+        assertResolvedHostAllowed("0.0.0.0", { VITE_BIND: "0.0.0.0", VITE_ENABLE_LAN_MODE: flag })
+      ).toThrow();
+    }
+  });
+
+  it("rejects a bare --host (wildcard) even when both keys are set", () => {
+    expect(() =>
+      assertResolvedHostAllowed(true, { VITE_BIND: "0.0.0.0", VITE_ENABLE_LAN_MODE: "true" })
+    ).toThrow(/all interfaces/);
+  });
+
+  it("allows an intentional LAN bind when both keys agree", () => {
+    expect(assertResolvedHostAllowed("0.0.0.0", { VITE_BIND: "0.0.0.0", VITE_ENABLE_LAN_MODE: "true" }))
+      .toBe("0.0.0.0");
+    expect(assertResolvedHostAllowed("192.168.4.158", { VITE_BIND: "192.168.4.158", VITE_ENABLE_LAN_MODE: "true" }))
+      .toBe("192.168.4.158");
+    // IPv6, with and without brackets on either side
+    expect(assertResolvedHostAllowed("[::]", { VITE_BIND: "::", VITE_ENABLE_LAN_MODE: "true" })).toBe("[::]");
+    expect(assertResolvedHostAllowed("::", { VITE_BIND: "[::]", VITE_ENABLE_LAN_MODE: "true" })).toBe("::");
   });
 });
 
@@ -97,6 +149,26 @@ describe("loopbackGuardPlugin", () => {
         preview: { host: "0.0.0.0" },
       })
     ).toThrow(/preview server/);
+  });
+
+  it("rejects the LAN flag alone through the resolved dev config", () => {
+    expect(() =>
+      plugin({ VITE_ENABLE_LAN_MODE: "true" }).configResolved({
+        command: "serve",
+        server: { host: "0.0.0.0" },
+      })
+    ).toThrow(/BOTH keys/);
+  });
+
+  it("allows dev and preview when both keys agree", () => {
+    const env = { VITE_BIND: "0.0.0.0", VITE_ENABLE_LAN_MODE: "true" };
+    expect(() =>
+      plugin(env).configResolved({
+        command: "serve",
+        server: { host: "0.0.0.0" },
+        preview: { host: "0.0.0.0" },
+      })
+    ).not.toThrow();
   });
 
   it("ignores builds, which never listen", () => {

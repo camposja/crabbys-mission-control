@@ -97,12 +97,69 @@ RSpec.describe BindAddress do
         .to raise_error(BindAddress::LanBindNotAllowed, /0\.0\.0\.0:3003/)
     end
 
-    it "allows a LAN bind only with MISSION_CONTROL_ALLOW_LAN=true" do
-      binds = [ "tcp://0.0.0.0:3002" ]
-      expect { described_class.assert_binds_allowed!(binds, { "MISSION_CONTROL_ALLOW_LAN" => "1" }) }
+    # Two keys, and they have to agree. The flag on its own used to be enough,
+    # which let `rails server -b 0.0.0.0` decide the exposure by itself.
+    it "rejects the LAN flag alone plus a CLI bind" do
+      expect {
+        described_class.assert_binds_allowed!([ "tcp://0.0.0.0:3002" ], { "MISSION_CONTROL_ALLOW_LAN" => "true" })
+      }.to raise_error(BindAddress::LanBindNotAllowed, /BOTH keys/)
+    end
+
+    it "rejects RAILS_BIND alone" do
+      expect {
+        described_class.assert_binds_allowed!([ "tcp://0.0.0.0:3002" ], { "RAILS_BIND" => "0.0.0.0" })
+      }.to raise_error(BindAddress::LanBindNotAllowed)
+    end
+
+    it "rejects a RAILS_BIND that does not match the final bind" do
+      env = { "RAILS_BIND" => "0.0.0.0", "MISSION_CONTROL_ALLOW_LAN" => "true" }
+      expect { described_class.assert_binds_allowed!([ "tcp://192.168.4.158:3002" ], env) }
         .to raise_error(BindAddress::LanBindNotAllowed)
-      expect(described_class.assert_binds_allowed!(binds, { "MISSION_CONTROL_ALLOW_LAN" => "true" }))
-        .to eq(binds)
+
+      env = { "RAILS_BIND" => "192.168.4.158", "MISSION_CONTROL_ALLOW_LAN" => "true" }
+      expect { described_class.assert_binds_allowed!([ "tcp://0.0.0.0:3002" ], env) }
+        .to raise_error(BindAddress::LanBindNotAllowed)
+    end
+
+    it "rejects a blank or missing RAILS_BIND even with the flag" do
+      [ "", "   ", nil ].each do |bind|
+        env = { "RAILS_BIND" => bind, "MISSION_CONTROL_ALLOW_LAN" => "true" }
+        expect { described_class.assert_binds_allowed!([ "tcp://0.0.0.0:3002" ], env) }
+          .to raise_error(BindAddress::LanBindNotAllowed)
+      end
+    end
+
+    it "requires the flag to be exactly \"true\"" do
+      [ "1", "yes", "TRUE", "True", " true " ].each do |flag|
+        env = { "RAILS_BIND" => "0.0.0.0", "MISSION_CONTROL_ALLOW_LAN" => flag }
+        expect { described_class.assert_binds_allowed!([ "tcp://0.0.0.0:3002" ], env) }
+          .to raise_error(BindAddress::LanBindNotAllowed)
+      end
+    end
+
+    it "allows an intentional LAN bind when both keys agree" do
+      binds = [ "tcp://0.0.0.0:3002" ]
+      env   = { "RAILS_BIND" => "0.0.0.0", "MISSION_CONTROL_ALLOW_LAN" => "true" }
+      expect(described_class.assert_binds_allowed!(binds, env)).to eq(binds)
+
+      lan = [ "tcp://192.168.4.158:3002" ]
+      expect(described_class.assert_binds_allowed!(lan, { "RAILS_BIND" => "192.168.4.158", "MISSION_CONTROL_ALLOW_LAN" => "true" }))
+        .to eq(lan)
+    end
+
+    it "allows a matching IPv6 LAN bind with or without brackets" do
+      env = { "RAILS_BIND" => "::", "MISSION_CONTROL_ALLOW_LAN" => "true" }
+      expect(described_class.assert_binds_allowed!([ "tcp://[::]:3002" ], env)).to be_truthy
+
+      env = { "RAILS_BIND" => "[::]", "MISSION_CONTROL_ALLOW_LAN" => "true" }
+      expect(described_class.assert_binds_allowed!([ "tcp://[::]:3002" ], env)).to be_truthy
+    end
+
+    it "still allows loopback and unix sockets while LAN mode is on for another host" do
+      env = { "RAILS_BIND" => "0.0.0.0", "MISSION_CONTROL_ALLOW_LAN" => "true" }
+      expect(described_class.assert_binds_allowed!([ "tcp://127.0.0.1:3002" ], env)).to be_truthy
+      expect(described_class.assert_binds_allowed!([ "tcp://[::1]:3002" ], env)).to be_truthy
+      expect(described_class.assert_binds_allowed!([ "unix:///tmp/puma.sock" ], env)).to be_truthy
     end
   end
 

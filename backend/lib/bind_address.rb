@@ -39,6 +39,23 @@ module BindAddress
     env["MISSION_CONTROL_ALLOW_LAN"] == "true"
   end
 
+  # Two keys, and they have to agree.
+  #
+  # The flag alone is NOT enough: `MISSION_CONTROL_ALLOW_LAN=true` plus
+  # `rails server -b 0.0.0.0` used to be accepted, which let a command-line flag
+  # decide the exposure. The operator must also have declared the interface in
+  # RAILS_BIND, and it must be the interface actually being bound — so a
+  # RAILS_BIND of 0.0.0.0 does not authorise a bind on a LAN address, and a
+  # RAILS_BIND for one address does not authorise another.
+  def self.lan_bind_authorized?(host, env = ENV)
+    return false unless allow_lan?(env)
+
+    declared = env["RAILS_BIND"].to_s.strip
+    return false if declared.empty?
+
+    normalize(declared) == normalize(host)
+  end
+
   # The host Rails/Puma should bind to.
   # @raise [LanBindNotAllowed] non-loopback RAILS_BIND without MISSION_CONTROL_ALLOW_LAN=true
   def self.resolve(env = ENV)
@@ -62,6 +79,12 @@ module BindAddress
   def self.configured(env = ENV)
     host = env["RAILS_BIND"].to_s.strip
     host.empty? ? DEFAULT : host
+  end
+
+  # No ActiveSupport here — config/puma.rb requires this file before Rails boots.
+  def self.shown(value)
+    text = value.to_s.strip
+    text.empty? ? "(unset)" : text
   end
 
   # Host portion of a Puma bind URI: "tcp://127.0.0.1:3002" -> "127.0.0.1",
@@ -88,15 +111,17 @@ module BindAddress
   # @raise [LanBindNotAllowed] any non-loopback bind without both opt-ins
   def self.assert_binds_allowed!(binds, env = ENV)
     offenders = Array(binds).reject do |bind|
-      host = host_from_bind(bind)
-      host.nil? || loopback?(host)
+      host = host_from_bind(bind)         # nil for unix/abstract sockets
+      host.nil? || loopback?(host) || lan_bind_authorized?(host, env)
     end
-    return binds if offenders.empty? || allow_lan?(env)
+    return binds if offenders.empty?
 
     raise LanBindNotAllowed,
       "Refusing to start: #{offenders.join(', ')} would expose the API and the Terminal " \
       "(which runs shell commands as your user) beyond this machine. Bind to 127.0.0.1 " \
-      "instead, or opt in deliberately with RAILS_BIND plus MISSION_CONTROL_ALLOW_LAN=true " \
-      "on a trusted network only."
+      "instead. Serving a LAN interface takes BOTH keys, and they must agree: " \
+      "RAILS_BIND=<the same host> and MISSION_CONTROL_ALLOW_LAN=true " \
+      "(currently RAILS_BIND=#{shown(env['RAILS_BIND'])}, " \
+      "MISSION_CONTROL_ALLOW_LAN=#{shown(env['MISSION_CONTROL_ALLOW_LAN'])})."
   end
 end

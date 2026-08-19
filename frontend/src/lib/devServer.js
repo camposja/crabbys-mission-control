@@ -15,7 +15,7 @@ export const DEFAULT_DEV_HOST = "127.0.0.1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "[::1]", "localhost"]);
 
 export function isLoopbackHost(host) {
-  return LOOPBACK_HOSTS.has(String(host || "").trim().toLowerCase());
+  return LOOPBACK_HOSTS.has(normalizeHost(host));
 }
 
 /**
@@ -36,14 +36,42 @@ export function isLoopbackHost(host) {
 export function assertResolvedHostAllowed(host, env = {}, kind = "dev server") {
   if (host === undefined || host === false || host === "") return host; // Vite default: localhost
   if (host !== true && isLoopbackHost(host)) return host;
-  if (env.VITE_ENABLE_LAN_MODE === "true") return host;
+  if (lanHostAuthorized(host, env)) return host;
 
   const shown = host === true ? "--host (all interfaces)" : `--host ${host}`;
+  const bind = String(env.VITE_BIND ?? "").trim() || "(unset)";
+  const flag = String(env.VITE_ENABLE_LAN_MODE ?? "").trim() || "(unset)";
   throw new Error(
     `Refusing to start: ${shown} would serve Mission Control beyond this machine. ` +
-      `Bind the ${kind} to 127.0.0.1 instead, or opt in deliberately with VITE_BIND ` +
-      "plus VITE_ENABLE_LAN_MODE=true on a trusted network only."
+      `Bind the ${kind} to 127.0.0.1 instead. Serving a LAN interface takes BOTH keys, ` +
+      "and they must agree: VITE_BIND=<the same host> and VITE_ENABLE_LAN_MODE=true " +
+      `(currently VITE_BIND=${bind}, VITE_ENABLE_LAN_MODE=${flag}).`
   );
+}
+
+/**
+ * Two keys, and they have to agree.
+ *
+ * The flag alone is NOT enough: VITE_ENABLE_LAN_MODE=true plus `vite --host 0.0.0.0`
+ * used to be accepted, which let a command-line flag decide the exposure. The
+ * operator must also have declared the interface in VITE_BIND, and it must be the
+ * host actually being served — so VITE_BIND=0.0.0.0 does not authorise serving a
+ * LAN address, and vice versa. A bare `--host` (Vite's `true`, meaning every
+ * interface) names no host at all, so it can never match and is always refused.
+ */
+function lanHostAuthorized(host, env) {
+  if (host === true) return false;
+  if (env.VITE_ENABLE_LAN_MODE !== "true") return false;
+
+  const declared = String(env.VITE_BIND ?? "").trim();
+  if (!declared) return false;
+
+  return normalizeHost(declared) === normalizeHost(host);
+}
+
+// "[::1]" -> "::1", " 0.0.0.0 " -> "0.0.0.0"
+function normalizeHost(host) {
+  return String(host ?? "").trim().toLowerCase().replace(/^\[/, "").replace(/\]$/, "");
 }
 
 /**
@@ -73,11 +101,11 @@ export function resolveDevServerHost(env = {}) {
   if (!requested) return DEFAULT_DEV_HOST;
   if (isLoopbackHost(requested)) return requested;
 
-  if (env.VITE_ENABLE_LAN_MODE !== "true") {
+  if (!lanHostAuthorized(requested, env)) {
     throw new Error(
       `VITE_BIND=${requested} would serve Mission Control beyond this machine. ` +
         "Refusing to start. Use the default 127.0.0.1, or opt in deliberately with " +
-        "VITE_ENABLE_LAN_MODE=true on a trusted network only."
+        "VITE_BIND plus VITE_ENABLE_LAN_MODE=true on a trusted network only."
     );
   }
   return requested;

@@ -91,20 +91,24 @@ Mission Control is a no-login local operator app, so it is **localhost-only by d
   nothing silently targets the LAN.
 - Rails CORS allows only `localhost` frontend origins.
 
-Asking either server for a non-loopback interface **without** the matching LAN flag is a hard
-error at startup, not a warning — accidental exposure is the failure mode this app is designed
-against.
+Asking either server for a non-loopback interface is a hard error at startup, not a warning —
+accidental exposure is the failure mode this app is designed against. Each server needs **two
+keys that agree**: the interface named in `RAILS_BIND`/`VITE_BIND` **and** the matching LAN flag,
+**and** that declared interface must be the one actually being bound. So the flag on its own does
+not let `rails server -b 0.0.0.0` or `vite --host 0.0.0.0` through, a declared bind on its own
+does not either, `RAILS_BIND=0.0.0.0` does not authorise a bind on a LAN address, and a bare
+`vite --host` (every interface, naming none) is always refused.
 
 **LAN mode (opt-in).** To reach Mission Control from another device on a trusted network
 (home LAN, Tailscale, or an SSH tunnel), set **all four** values and restart **both** servers:
 
 ```bash
 # backend/.env
-RAILS_BIND=0.0.0.0                 # bind beyond loopback (refused without the flag below)
+RAILS_BIND=0.0.0.0                 # must equal the interface actually bound (`-b`, BINDING, …)
 MISSION_CONTROL_ALLOW_LAN=true     # CORS allows 192.168.* / 10.* / 172.16-31.* / Tailscale 100.64.0.0/10 (100.64–100.127.x.x) / *.ts.net on :5173
 
 # frontend/.env.local
-VITE_BIND=0.0.0.0                  # serve the UI beyond loopback (refused without the flag below)
+VITE_BIND=0.0.0.0                  # must equal the host actually served (`--host`)
 VITE_ENABLE_LAN_MODE=true          # frontend derives the backend URL from the page host
 ```
 
