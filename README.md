@@ -39,8 +39,13 @@ cd frontend && VITE_BIND=127.0.0.1 corepack pnpm dev --host 127.0.0.1
 
 Open **http://localhost:5173**
 
-Or run both at once: `mise exec -- foreman start -f Procfile.dev` (the Procfile
-passes the explicit loopback binds and port 3002 above).
+Or run both at once with `Procfile.dev`, which passes the same explicit loopback
+binds and port 3002. Foreman is not bundled with the app — install it once
+(`gem install foreman`), then:
+
+```bash
+foreman start -f Procfile.dev
+```
 
 > **Package manager:** the frontend uses **pnpm**, pinned by `packageManager` in
 > `frontend/package.json` and always launched through Corepack. Use
