@@ -2,8 +2,11 @@
 //
 // Default behavior is localhost-only. LAN targeting is OPT-IN via
 // VITE_ENABLE_LAN_MODE=true — without it, the app always talks to
-// localhost:3000 even when opened from a LAN URL (so nothing silently
+// localhost:3002 even when opened from a LAN URL (so nothing silently
 // targets the LAN). Explicit VITE_API_URL / VITE_CABLE_URL always win.
+
+// This machine's backend port. Keep in sync with Procfile.dev / setup.sh.
+export const DEFAULT_BACKEND_PORT = 3002;
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]", ""]);
 
@@ -34,8 +37,8 @@ export function resolveBackendTarget({ hostname, protocol, env } = {}) {
   // Only target the page's own host when LAN mode is explicitly enabled.
   const derivedHost = (lanEnabled && isRemoteHost) ? hostname : "localhost";
   const isHttps = protocol === "https:";
-  const httpOrigin = `${isHttps ? "https" : "http"}://${derivedHost}:3000`;
-  const wsOrigin = `${isHttps ? "wss" : "ws"}://${derivedHost}:3000`;
+  const httpOrigin = `${isHttps ? "https" : "http"}://${derivedHost}:${DEFAULT_BACKEND_PORT}`;
+  const wsOrigin = `${isHttps ? "wss" : "ws"}://${derivedHost}:${DEFAULT_BACKEND_PORT}`;
 
   const apiUrl = e.VITE_API_URL || `${httpOrigin}/api/v1`;
   const cableUrl = e.VITE_CABLE_URL || `${wsOrigin}/cable`;

@@ -99,7 +99,7 @@ class HeartbeatCheckJob < ApplicationJob
   private
 
   def mc_url
-    ENV.fetch("MISSION_CONTROL_URL", "http://localhost:3000")
+    ENV.fetch("MISSION_CONTROL_URL", "http://localhost:3002")
   end
 
   def recently_sent?

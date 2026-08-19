@@ -1,11 +1,13 @@
 # React + Vite
 
 > **Package manager: pnpm 11+ (supply-chain hardening).**
-> Use `pnpm install`, **not** `npm install`/`yarn` — `pnpm-lock.yaml` is the only
-> lockfile this project keeps. Pinned to `pnpm@11.19.0` via `packageManager` and
+> Install with `mise exec -- corepack pnpm install` — never `npm`/`yarn`;
+> `pnpm-lock.yaml` is the only lockfile this project keeps. Pinned to `pnpm@11.19.0` via `packageManager` and
 > configured in `pnpm-workspace.yaml` to: enforce a **7-day** minimum release age,
 > block exotic transitive dependencies, and hard-fail any unreviewed dependency
-> build/postinstall script. Run `pnpm dev`, `pnpm build`, `pnpm lint`, `pnpm test`.
+> build/postinstall script. Always launch it through Corepack: `corepack pnpm dev`
+> interactively, `mise exec -- corepack pnpm …` from scripts, Procfiles and CI
+> (a bare `pnpm` is not on PATH). Scripts: `dev`, `build`, `lint`, `test`.
 >
 > The dev server binds to **127.0.0.1** explicitly (`VITE_BIND`, see
 > `src/lib/devServer.js`); a non-loopback bind is refused unless

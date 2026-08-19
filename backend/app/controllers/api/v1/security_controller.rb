@@ -46,8 +46,8 @@ module Api
           local_ip:     local_ip,
           recommendations: [
             "Use Tailscale (tailscale.com) for secure remote access without opening firewall ports.",
-            "Alternatively: ssh -L 3000:localhost:3000 your-machine",
-            "NEVER expose port 3000 or 18789 directly on a public interface.",
+            "Alternatively: ssh -L 3002:localhost:3002 your-machine",
+            "NEVER expose port 3002 or 18789 directly on a public interface.",
             "Keep agent memory and intelligence local — only use external services for UI state if needed."
           ]
         }

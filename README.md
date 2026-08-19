@@ -30,22 +30,24 @@ cd crabbys-mission-control
 Then in two terminals — both bind explicitly to loopback:
 
 ```bash
-# Terminal 1 — Rails API on 127.0.0.1:3000
-cd backend && RAILS_BIND=127.0.0.1 bundle exec rails server -b 127.0.0.1 -p 3000
+# Terminal 1 — Rails API on 127.0.0.1:3002
+cd backend && RAILS_BIND=127.0.0.1 mise exec -- bundle exec rails server -b 127.0.0.1 -p 3002
 
 # Terminal 2 — Vite UI on 127.0.0.1:5173
-cd frontend && VITE_BIND=127.0.0.1 pnpm dev --host 127.0.0.1
+cd frontend && VITE_BIND=127.0.0.1 corepack pnpm dev --host 127.0.0.1
 ```
 
 Open **http://localhost:5173**
 
-Or run both at once with `foreman start -f Procfile.dev` (the Procfile already
-passes the explicit loopback binds above).
+Or run both at once: `mise exec -- foreman start -f Procfile.dev` (the Procfile
+passes the explicit loopback binds and port 3002 above).
 
-> **Package manager:** the frontend uses **pnpm** (pinned via `packageManager`).
-> Never run `npm install` / `yarn` in `frontend/` — it would bypass the
-> supply-chain policy in `frontend/pnpm-workspace.yaml` and write a stray
-> `package-lock.json`.
+> **Package manager:** the frontend uses **pnpm**, pinned by `packageManager` in
+> `frontend/package.json` and always launched through Corepack. Use
+> `corepack pnpm …` interactively and `mise exec -- corepack pnpm …` in scripts,
+> Procfiles and CI — a bare `pnpm` is not on PATH here, and `npm`/`yarn` would
+> bypass the supply-chain policy in `frontend/pnpm-workspace.yaml` and write a
+> stray `package-lock.json`.
 
 ---
 
@@ -57,7 +59,7 @@ passes the explicit loopback binds above).
 |---|---|---|
 | `OPENCLAW_GATEWAY_URL` | `http://localhost:18789` | OpenClaw gateway URL |
 | `OPENCLAW_GATEWAY_TOKEN` | — | **Required** — token from `~/.openclaw/openclaw.json` |
-| `RAILS_PORT` | `3000` | Rails server port |
+| `RAILS_PORT` | `3002` | Rails server port |
 | `RAILS_BIND` | `127.0.0.1` | Interface Rails binds to. A non-loopback value is **refused at boot** unless `MISSION_CONTROL_ALLOW_LAN=true` |
 | `DATABASE_URL` | *(from database.yml)* | Override Postgres connection |
 | `MISSION_CONTROL_ALLOW_LAN` | `false` | Opt into LAN mode — allow CORS from private/Tailscale frontend origins (see below) |
@@ -66,8 +68,8 @@ passes the explicit loopback binds above).
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:3000/api/v1` | Rails API base URL (explicit override) |
-| `VITE_CABLE_URL` | `ws://localhost:3000/cable` | Action Cable WebSocket URL (explicit override) |
+| `VITE_API_URL` | `http://localhost:3002/api/v1` | Rails API base URL (explicit override) |
+| `VITE_CABLE_URL` | `ws://localhost:3002/cable` | Action Cable WebSocket URL (explicit override) |
 | `VITE_BIND` | `127.0.0.1` | Interface the Vite dev/preview server binds to. A non-loopback value is **refused at startup** unless `VITE_ENABLE_LAN_MODE=true` |
 | `VITE_ENABLE_LAN_MODE` | `false` | Opt into LAN mode — derive the backend URL from the page host (see below) |
 
@@ -80,7 +82,7 @@ Mission Control is a no-login local operator app, so it is **localhost-only by d
 - Rails binds to `127.0.0.1` (`RAILS_BIND`, enforced in `backend/lib/bind_address.rb`).
 - Vite binds to `127.0.0.1` (`VITE_BIND`, enforced in `frontend/src/lib/devServer.js`) —
   explicitly, not by relying on Vite's implicit default.
-- The frontend always talks to `http://localhost:3000`, even if you open it from a LAN URL —
+- The frontend always talks to `http://localhost:3002`, even if you open it from a LAN URL —
   nothing silently targets the LAN.
 - Rails CORS allows only `localhost` frontend origins.
 

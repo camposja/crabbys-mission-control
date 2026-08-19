@@ -1,5 +1,5 @@
 # Supply-chain hardening. Requires pnpm >= 11. See team plan "adaptive-conjuring-nebula".
-# Use `pnpm install`, NOT `npm install` — see README.
+# Install with `mise exec -- corepack pnpm install`, NEVER npm/yarn — see README.
 minimumReleaseAge: 10080       # 7 days — don't install versions published <7d ago
 minimumReleaseAgeStrict: true  # fail rather than silently fall back to an older version
 blockExoticSubdeps: true       # transitive deps must come from the registry, not git/tarball/url
@@ -8,5 +8,5 @@ dangerouslyAllowAllBuilds: false
 allowBuilds: {}
 # Empty by design: verified (pnpm v11.19.0, 518 deps) that NO dependency in this
 # tree declares a preinstall/install/postinstall script — Vite 8 uses Rolldown,
-# not esbuild. strictDepBuilds:true will hard-fail `pnpm install` if any future
+# not esbuild. strictDepBuilds:true will hard-fail the install if any future
 # dependency adds a build script; review it and add `name: true` here only then.

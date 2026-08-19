@@ -18,7 +18,7 @@ class SpawnAgentJob < ApplicationJob
       # As a workaround, send a chat message to the main agent asking it to
       # create a sub-agent for this task.
       agent_name = "task-#{task.id}-#{task.title.parameterize.truncate(30, omission: '')}"
-      webhook_url = "#{ENV.fetch('MISSION_CONTROL_URL', 'http://localhost:3000')}/api/v1/openclaw/webhook"
+      webhook_url = "#{ENV.fetch('MISSION_CONTROL_URL', 'http://localhost:3002')}/api/v1/openclaw/webhook"
       webhook_token = ENV["MISSION_CONTROL_WEBHOOK_TOKEN"]
       auth_header_instruction = webhook_token.present? ? "\n        Header: X-Mission-Control-Token: #{webhook_token}" : ""
 

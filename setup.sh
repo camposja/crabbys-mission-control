@@ -5,7 +5,7 @@ set -e
 # Crabby's Mission Control — Local Setup Script
 # ============================================================
 
-RAILS_PORT="${RAILS_PORT:-3000}"
+RAILS_PORT="${RAILS_PORT:-3002}"
 REACT_PORT="${REACT_PORT:-5173}"
 OPENCLAW_HOME="${OPENCLAW_HOME:-$HOME/.openclaw}"
 
@@ -82,16 +82,10 @@ echo ""
 echo "📦  Installing Node dependencies…"
 cd frontend
 
-# pnpm is pinned by frontend/package.json ("packageManager"). Use a real pnpm if
-# one is on PATH, otherwise let corepack (shipped with the mise-managed Node)
-# fetch the pinned version. NEVER npm/yarn here — that bypasses pnpm-workspace.yaml.
-if command -v pnpm &>/dev/null; then
-  PNPM=(pnpm)
-else
-  PNPM=(mise exec -- corepack pnpm)
-fi
-
-"${PNPM[@]}" install --silent
+# Always the Corepack-pinned pnpm from frontend/package.json ("packageManager"),
+# never whatever happens to be on PATH. NEVER npm/yarn here — that would bypass
+# the supply-chain policy in pnpm-workspace.yaml and write a stray lockfile.
+mise exec -- corepack pnpm install --silent
 
 if [ ! -f ".env.local" ]; then
   printf "VITE_API_URL=http://localhost:%s/api/v1\nVITE_CABLE_URL=ws://localhost:%s/cable\n" \
@@ -113,7 +107,7 @@ echo "  Terminal 1 (Rails API on 127.0.0.1:$RAILS_PORT):"
 echo "    cd backend && RAILS_BIND=127.0.0.1 mise exec -- bundle exec rails server -b 127.0.0.1 -p $RAILS_PORT"
 echo ""
 echo "  Terminal 2 (React frontend on 127.0.0.1:$REACT_PORT):"
-echo "    cd frontend && VITE_BIND=127.0.0.1 pnpm dev --host 127.0.0.1 --port $REACT_PORT"
+echo "    cd frontend && VITE_BIND=127.0.0.1 mise exec -- corepack pnpm dev --host 127.0.0.1 --port $REACT_PORT"
 echo ""
 echo "  Then open: http://localhost:$REACT_PORT"
 echo ""

@@ -36,7 +36,7 @@ threads threads_count, threads_count
 # user, so accidental LAN exposure is the failure mode we design against.
 require_relative "../lib/bind_address"
 
-port ENV.fetch("PORT", 3000), BindAddress.resolve
+port ENV.fetch("PORT", 3002), BindAddress.resolve
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart

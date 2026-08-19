@@ -4,16 +4,16 @@ import { resolveBackendTarget } from "./config";
 describe("resolveBackendTarget", () => {
   it("localhost host + no env → localhost URLs, not LAN", () => {
     const t = resolveBackendTarget({ hostname: "localhost", protocol: "http:", env: {} });
-    expect(t.apiUrl).toBe("http://localhost:3000/api/v1");
-    expect(t.cableUrl).toBe("ws://localhost:3000/cable");
+    expect(t.apiUrl).toBe("http://localhost:3002/api/v1");
+    expect(t.cableUrl).toBe("ws://localhost:3002/cable");
     expect(t.isLanMode).toBe(false);
     expect(t.isRemoteHost).toBe(false);
   });
 
   it("LAN host + LAN disabled → still localhost (no silent LAN targeting)", () => {
     const t = resolveBackendTarget({ hostname: "192.168.1.20", protocol: "http:", env: {} });
-    expect(t.apiUrl).toBe("http://localhost:3000/api/v1");
-    expect(t.cableUrl).toBe("ws://localhost:3000/cable");
+    expect(t.apiUrl).toBe("http://localhost:3002/api/v1");
+    expect(t.cableUrl).toBe("ws://localhost:3002/cable");
     expect(t.isLanMode).toBe(false);
     expect(t.isRemoteHost).toBe(true); // opened over the network → banner should warn
   });
@@ -24,9 +24,9 @@ describe("resolveBackendTarget", () => {
       protocol: "http:",
       env: { VITE_ENABLE_LAN_MODE: "true" },
     });
-    expect(t.apiUrl).toBe("http://192.168.1.20:3000/api/v1");
-    expect(t.cableUrl).toBe("ws://192.168.1.20:3000/cable");
-    expect(t.backendOrigin).toBe("http://192.168.1.20:3000");
+    expect(t.apiUrl).toBe("http://192.168.1.20:3002/api/v1");
+    expect(t.cableUrl).toBe("ws://192.168.1.20:3002/cable");
+    expect(t.backendOrigin).toBe("http://192.168.1.20:3002");
     expect(t.isLanMode).toBe(true);
   });
 
@@ -36,8 +36,8 @@ describe("resolveBackendTarget", () => {
       protocol: "https:",
       env: { VITE_ENABLE_LAN_MODE: "true" },
     });
-    expect(t.apiUrl).toBe("https://box.tailnet.ts.net:3000/api/v1");
-    expect(t.cableUrl).toBe("wss://box.tailnet.ts.net:3000/cable");
+    expect(t.apiUrl).toBe("https://box.tailnet.ts.net:3002/api/v1");
+    expect(t.cableUrl).toBe("wss://box.tailnet.ts.net:3002/cable");
   });
 
   it("explicit VITE_API_URL / VITE_CABLE_URL override everything", () => {
@@ -59,7 +59,7 @@ describe("resolveBackendTarget", () => {
     const t = resolveBackendTarget({
       hostname: "localhost",
       protocol: "http:",
-      env: { VITE_API_URL: "http://192.168.1.50:3000/api/v1" },
+      env: { VITE_API_URL: "http://192.168.1.50:3002/api/v1" },
     });
     expect(t.backendHost).toBe("192.168.1.50");
     expect(t.isLanMode).toBe(true);   // resolved backend is remote → banner warns
@@ -72,8 +72,8 @@ describe("resolveBackendTarget", () => {
       protocol: "http:",
       env: { VITE_BIND: "0.0.0.0" },
     });
-    expect(t.apiUrl).toBe("http://localhost:3000/api/v1");
-    expect(t.cableUrl).toBe("ws://localhost:3000/cable");
+    expect(t.apiUrl).toBe("http://localhost:3002/api/v1");
+    expect(t.cableUrl).toBe("ws://localhost:3002/cable");
     expect(t.isLanMode).toBe(false);
   });
 

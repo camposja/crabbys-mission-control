@@ -88,7 +88,7 @@ function AuditTab() {
               Anyone who can reach this app has <strong>full admin access</strong> to your OpenClaw agents,
               your local shell (via Terminal), and all workspace files.{" "}
               <strong>This app must only be accessible from localhost.</strong>{" "}
-              Never expose ports 3000 or 18789 to the internet directly.
+              Never expose ports 3002 or 18789 to the internet directly.
               Use Tailscale or SSH tunnelling for remote access.
             </p>
           </div>
@@ -238,12 +238,12 @@ function RemoteAccessTab() {
             <Terminal size={16} className="text-blue-400" />
             <p className="text-sm font-semibold text-white">SSH Tunnel</p>
           </div>
-          <p className="text-xs text-gray-500 mb-2">Forward port 3000 from remote to local:</p>
+          <p className="text-xs text-gray-500 mb-2">Forward port 3002 from remote to local:</p>
           <div className="flex items-center gap-1">
             <code className="text-xs bg-gray-950 text-green-400 px-2 py-1 rounded font-mono flex-1 truncate">
-              ssh -L 3000:localhost:3000 your-machine
+              ssh -L 3002:localhost:3002 your-machine
             </code>
-            <CopyButton text="ssh -L 3000:localhost:3000 your-machine" />
+            <CopyButton text="ssh -L 3002:localhost:3002 your-machine" />
           </div>
         </div>
       </div>
@@ -256,8 +256,8 @@ function RemoteAccessTab() {
         <div className="space-y-2.5">
           {(data?.recommendations || [
             "Use Tailscale for secure remote access without opening firewall ports.",
-            "Alternatively: ssh -L 3000:localhost:3000 your-machine",
-            "NEVER expose port 3000 or 18789 directly on a public interface.",
+            "Alternatively: ssh -L 3002:localhost:3002 your-machine",
+            "NEVER expose port 3002 or 18789 directly on a public interface.",
             "Keep agent memory and intelligence local — only use external services for UI state if needed."
           ]).map((rec, i) => (
             <div key={i} className="flex items-start gap-2">

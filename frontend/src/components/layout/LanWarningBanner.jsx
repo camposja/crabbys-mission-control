@@ -29,7 +29,7 @@ export default function LanWarningBanner() {
         <p className="leading-snug">
           You opened Mission Control over the network, but{" "}
           <span className="font-semibold text-amber-300">LAN mode is off</span> — it is targeting{" "}
-          <span className="font-mono">localhost:3000</span> and will not reach this server. To use it over the
+          <span className="font-mono">localhost:3002</span> and will not reach this server. To use it over the
           network, set <span className="font-mono">VITE_ENABLE_LAN_MODE=true</span> (frontend) and{" "}
           <span className="font-mono">MISSION_CONTROL_ALLOW_LAN=true</span> (backend), then restart both.
         </p>

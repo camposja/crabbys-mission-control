@@ -1,5 +1,8 @@
 # Localhost-only by default. Both servers are given an EXPLICIT loopback bind —
 # LAN exposure requires deliberately setting RAILS_BIND/VITE_BIND to a non-loopback
 # host AND MISSION_CONTROL_ALLOW_LAN=true / VITE_ENABLE_LAN_MODE=true (see README).
-rails: cd backend && RAILS_BIND="${RAILS_BIND:-127.0.0.1}" bundle exec rails server -b "${RAILS_BIND:-127.0.0.1}" -p "${RAILS_PORT:-3000}"
-react: cd frontend && VITE_BIND="${VITE_BIND:-127.0.0.1}" pnpm dev --host "${VITE_BIND:-127.0.0.1}"
+#
+# pnpm is always invoked as `mise exec -- corepack pnpm` so automation uses the
+# version pinned in frontend/package.json regardless of what is on PATH.
+rails: cd backend && RAILS_BIND="${RAILS_BIND:-127.0.0.1}" mise exec -- bundle exec rails server -b "${RAILS_BIND:-127.0.0.1}" -p "${RAILS_PORT:-3002}"
+react: cd frontend && VITE_BIND="${VITE_BIND:-127.0.0.1}" mise exec -- corepack pnpm dev --host "${VITE_BIND:-127.0.0.1}" --port "${REACT_PORT:-5173}"
