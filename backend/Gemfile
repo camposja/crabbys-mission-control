@@ -1,9 +1,9 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.2"
+gem "rails", "~> 8.1.4"
 # Use postgresql as the database for Active Record
-gem "pg", "~> 1.1"
+gem "pg", "~> 1.7"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
@@ -33,7 +33,7 @@ gem "thruster", require: false
 gem "rack-cors"
 
 # HTTP client for OpenClaw gateway health check (GET /health still works over HTTP)
-gem "faraday", "~> 2.0"
+gem "faraday", "~> 2.15"
 
 # WebSocket client for OpenClaw gateway JSON-RPC
 gem "websocket", "~> 1.2"
@@ -42,7 +42,7 @@ gem "websocket", "~> 1.2"
 gem "dotenv-rails", groups: [:development, :test]
 
 # Background jobs
-gem "sidekiq", "~> 7.0"
+gem "sidekiq", "~> 7.3"
 
 # Vector search via pgvector
 gem "pgvector"
@@ -79,4 +79,4 @@ group :development, :test do
   gem "shoulda-matchers", "~> 6.0"
   gem "webmock"                       # stub HTTP calls (gateway) in tests
 end
-gem "fugit", "~> 1.12"
+gem "fugit", "~> 1.14"
